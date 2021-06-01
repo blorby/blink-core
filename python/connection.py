@@ -1,5 +1,7 @@
 import hvac
 
+from exception import CredentialsException
+
 
 class Connection:
 
@@ -15,9 +17,9 @@ class Connection:
         try:
             return result['data']['data']
         except TypeError:
-            raise RuntimeError(f'completed the request successfully but no secrets returned')
+            raise CredentialsException(f'completed the request successfully but no secrets returned')
         except KeyError:
-            raise RuntimeError(f'Invalid secret structure, failed resolving {self.name}')
+            raise CredentialsException(f'Invalid secret structure, failed resolving {self.name}')
 
     def get_vault_client(self):
         vault_client = hvac.Client(
@@ -25,10 +27,10 @@ class Connection:
         )
 
         if not vault_client:
-            raise RuntimeError('Unable to connect to the Vault service')
+            raise CredentialsException('Unable to connect to the Vault service')
 
         vault_client.token = self.token
         if not vault_client.is_authenticated():
-            raise RuntimeError('Unable to authenticate to the Vault service')
+            raise CredentialsException('Unable to authenticate to the Vault service')
 
         return vault_client

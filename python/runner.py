@@ -9,10 +9,7 @@ from typing import Dict
 
 from context import Context
 from connection import Connection
-
-
-class CodeExecutionError(Exception):
-    pass
+from exception import CodeExecutionError
 
 
 def write_output(output: str, context: Context, error):

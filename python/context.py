@@ -1,3 +1,6 @@
+from exception import ContextStructureError
+
+
 class Context:
     _KEY_SEPARATOR = '.'
 
@@ -5,19 +8,19 @@ class Context:
         self.internal_dict: dict = internal_dict
 
     def __getitem__(self, item: str):
-        return self.__resolve_inner_key(item)
+        return self.__resolve_inner_key(key=item)
 
     def __setitem__(self, key, value):
         key_parts = key.split(self._KEY_SEPARATOR)
         last_key = key_parts.pop()
 
         if len(key_parts) == 0:
-            raise ValueError(f'Key {key} does not exist')
+            raise KeyError(f'Key {key} does not exist')
 
         key_off_by_one = self._KEY_SEPARATOR.join(key_parts)
-        item = self.__resolve_inner_key(key_off_by_one, True)
+        item = self.__resolve_inner_key(key=key_off_by_one, create_keys=True)
         if type(item) != dict:
-            raise RuntimeError(f'Key {key} already exists and not a tree')
+            raise ContextStructureError(f'Key {key} already exists and not a tree')
 
         item[last_key] = value
 
@@ -28,13 +31,14 @@ class Context:
         for key_part in key_parts:
             if type(current_item) != dict:
                 if not create_keys:
-                    raise ValueError(f'Key {key} does not exist')
+                    raise KeyError(f'Key {key} does not exist')
+
                 current_item = dict()
 
             if create_keys and not current_item.__contains__(key_part):
                 current_item[key_part] = dict()
             elif not create_keys:
-                raise ValueError(f'Key {key} does not exist')
+                raise KeyError(f'Key {key} does not exist')
 
             current_item = current_item.__getitem__(key_part)
 
