@@ -14,6 +14,8 @@ class Connection:
         result = vault_client.read(f'secret/data/{self.name}/{self.id}')
         try:
             return result['data']['data']
+        except TypeError:
+            raise RuntimeError(f'completed the request successfully but no secrets returned')
         except KeyError:
             raise RuntimeError(f'Invalid secret structure, failed resolving {self.name}')
 
@@ -21,6 +23,9 @@ class Connection:
         vault_client = hvac.Client(
             url=self.vault_url,
         )
+
+        if not vault_client:
+            raise RuntimeError('Unable to connect to the Vault service')
 
         vault_client.token = self.token
         if not vault_client.is_authenticated():
