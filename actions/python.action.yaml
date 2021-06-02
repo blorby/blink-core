@@ -1,0 +1,9 @@
+# Describes the action and it's parameters
+name: "python"
+description: "Executes user provider python code"
+enabled: true
+parameters:
+  code:
+    type: "code:python"
+    description: "The actual code"
+    required: true

@@ -1,0 +1,9 @@
+name: "core"
+description: "The core Blink plugin"
+tags:
+  - code
+  - core
+  - blink
+  - internal
+
+provider: "blink"
