@@ -4,8 +4,8 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"errors"
-	"github.com/blinkops/plugin-sdk/plugin"
-	"github.com/blinkops/plugin-sdk/plugin/connections"
+	"github.com/blinkops/blink-sdk/plugin"
+	"github.com/blinkops/blink-sdk/plugin/connections"
 	log "github.com/sirupsen/logrus"
 	"os/exec"
 )

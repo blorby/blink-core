@@ -1,8 +1,8 @@
-FROM golang AS base
+FROM golang:1.16.3 AS base
 
 ENV GOPRIVATE=github.com/blinkops
 
-WORKDIR /go/src/github.com/blinkops/blink-core-plugin
+WORKDIR /go/src/github.com/blinkops/blink-core
 
 COPY go.mod go.sum ./
 RUN go mod download
@@ -12,10 +12,11 @@ FROM base AS builder
 # Install the package
 RUN go install -v ./...
 
-FROM ubuntu AS plugin
+#  ubuntu 20.04
+FROM ubuntu:focal-20210416 AS plugin
 
-WORKDIR /blink-core-plugin
-COPY --from=builder /go/bin/blink-core-plugin .
+WORKDIR /blink-core
+COPY --from=builder /go/bin/blink-core .
 COPY config.yaml plugin.yaml python/requirements.txt ./
 COPY python python/
 COPY actions actions/
@@ -31,6 +32,6 @@ RUN apt-get update && \
 # Expose the gRPC port.
 EXPOSE 1337
 
-RUN chmod a+x blink-core-plugin
+RUN chmod a+x blink-core
 
-ENTRYPOINT ./blink-core-plugin
+ENTRYPOINT ./blink-core

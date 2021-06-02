@@ -2,11 +2,11 @@ package implementation
 
 import (
 	"errors"
-	"github.com/blinkops/plugin-sdk/plugin"
-	"github.com/blinkops/plugin-sdk/plugin/actions"
-	"github.com/blinkops/plugin-sdk/plugin/config"
-	"github.com/blinkops/plugin-sdk/plugin/connections"
-	description2 "github.com/blinkops/plugin-sdk/plugin/description"
+	"github.com/blinkops/blink-sdk/plugin"
+	"github.com/blinkops/blink-sdk/plugin/actions"
+	"github.com/blinkops/blink-sdk/plugin/config"
+	"github.com/blinkops/blink-sdk/plugin/connections"
+	description2 "github.com/blinkops/blink-sdk/plugin/description"
 	log "github.com/sirupsen/logrus"
 	"path"
 )

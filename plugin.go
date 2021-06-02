@@ -1,9 +1,9 @@
 package main
 
 import (
-	"github.com/blinkops/blink-core-plugin/implementation"
-	plugin_sdk "github.com/blinkops/plugin-sdk"
-	"github.com/blinkops/plugin-sdk/plugin/config"
+	"github.com/blinkops/blink-core/implementation"
+	blinkSdk "github.com/blinkops/blink-sdk"
+	"github.com/blinkops/blink-sdk/plugin/config"
 	log "github.com/sirupsen/logrus"
 	"os"
 	"path"
@@ -35,7 +35,7 @@ func main() {
 		panic(err)
 	}
 
-	err = plugin_sdk.Start(plugin)
+	err = blinkSdk.Start(plugin)
 	if err != nil {
 		log.Fatal("Error during server startup: ", err)
 	}
