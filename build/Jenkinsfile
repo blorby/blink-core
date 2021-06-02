@@ -6,9 +6,9 @@ import blink.jenkins.ci.*
 node ("ci") {
 
   def pipeline = new PluginPipeline(this)
-  pipeline.projectName = "blink-core-plugin"
+  pipeline.projectName = "blink-core"
   pipeline.mainBranchName = "master"
-  pipeline.dockerImageName = "core-plugin"
+  pipeline.dockerImageName = "blink-core"
   pipeline.dockerRegistry = Constants.PUBLIC_DOCKER_REGISTRY
   pipeline.isMultiImage = false
   pipeline.runUnitTests = false
