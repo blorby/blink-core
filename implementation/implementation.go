@@ -11,6 +11,11 @@ import (
 	"path"
 )
 
+type FinalOutput struct {
+	Output string `json:"output"`
+	Error  string `json:"error"`
+}
+
 type ActionHandler func(ctx *plugin.ActionContext, request *plugin.ExecuteActionRequest) ([]byte, error)
 
 type CorePlugin struct {
@@ -76,7 +81,15 @@ func NewCorePlugin(rootPluginDirectory string) (*CorePlugin, error) {
 	}
 
 	supportedActions := map[string]ActionHandler{
-		"python": executeCorePythonAction,
+		"python":      executeCorePythonAction,
+		"bash":        executeCoreBashAction,
+		"ps":          executeCorePsAction,
+		"jq":          executeCoreJQAction,
+		"jp":          executeCoreJPAction,
+		"http_get":    executeCoreHTTPGetAction,
+		"http_post":   executeCoreHTTPPostAction,
+		"http_put":    executeCoreHTTPPutAction,
+		"http_delete": executeCoreHTTPDeleteAction,
 	}
 
 	return &CorePlugin{

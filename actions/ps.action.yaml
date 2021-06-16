@@ -1,0 +1,16 @@
+name: "ps"
+description: "List running processes"
+enabled: true
+parameters:
+  flags:
+    type: "string"
+    description: "Flags to ps"
+    required: false
+
+
+# Note: Uses OpenAPI specification in order to describe types
+output:
+  processes:
+    type: array
+    items:
+      type: string

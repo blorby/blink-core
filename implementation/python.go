@@ -10,16 +10,6 @@ import (
 	"os/exec"
 )
 
-const (
-	userProviderCodeKey = "code"
-	pythonRunnerPath    = "python/runner.py"
-)
-
-type FinalOutput struct {
-	Output string `json:"output"`
-	Error  string `json:"error"`
-}
-
 func executeCorePythonAction(ctx *plugin.ActionContext, request *plugin.ExecuteActionRequest) ([]byte, error) {
 
 	code, ok := request.Parameters[userProviderCodeKey]

@@ -1,0 +1,9 @@
+# Describes the action and it's parameters
+name: "bash"
+description: "Executes user provider bash code"
+enabled: true
+parameters:
+  code:
+    type: "code:bash"
+    description: "The actual code"
+    required: true

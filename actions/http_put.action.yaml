@@ -1,0 +1,13 @@
+# Describes the action and it's parameters
+name: "http_put"
+description: "Executes put request on provided url"
+enabled: true
+parameters:
+  url:
+    type: "string"
+    description: "The url to send a put request"
+    required: true
+  body:
+    type: "string"
+    description: "Body for put request"
+    required: true
