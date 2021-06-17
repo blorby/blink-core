@@ -3,6 +3,7 @@ package implementation
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"github.com/blinkops/blink-sdk/plugin"
 	log "github.com/sirupsen/logrus"
 	"os/exec"
@@ -20,7 +21,8 @@ func executeCoreJQAction(_ *plugin.ActionContext, request *plugin.ExecuteActionR
 		return nil, errors.New("no query provider for execution")
 	}
 
-	command := exec.Command("/bin/echo", providedJson, "|", "/bin/jq", query)
+	cmd := fmt.Sprintf("/bin/echo '%s' | /bin/jq %s", providedJson, query)
+	command := exec.Command("/bin/bash", "-c", cmd)
 
 	outputBytes, execErr := command.CombinedOutput()
 	if execErr != nil {
@@ -57,10 +59,11 @@ func executeCoreJPAction(_ *plugin.ActionContext, request *plugin.ExecuteActionR
 	if ok {
 		unquotedBool, err := strconv.ParseBool(unquotedKey)
 		if err == nil && unquotedBool {
-			unquoted = "--unquoted"
+			unquoted = "--unquoted "
 		}
 	}
-	command := exec.Command("/bin/echo", providedJson, "|", "/bin/jp", unquoted, query)
+	cmd := fmt.Sprintf("/bin/echo '%s' | /bin/jp %s%s", providedJson, unquoted, query)
+	command := exec.Command("/bin/bash", "-c", cmd)
 
 	outputBytes, execErr := command.CombinedOutput()
 	if execErr != nil {

@@ -10,7 +10,3 @@ parameters:
     type: "string"
     description: "Query to run on JSON"
     required: true
-  unquoted:
-    type: "bool"
-    description: "If the final result is a string, it will be printed without quotes. [$JP_UNQUOTED]"
-    required: false
