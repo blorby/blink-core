@@ -22,7 +22,7 @@ func executeCoreBashAction(_ *plugin.ActionContext, request *plugin.ExecuteActio
 	if execErr != nil {
 		log.Error("Detected failure, building result! Error: ", execErr)
 
-		failureResult := FinalOutput{Output: string(outputBytes), Error: execErr.Error()}
+		failureResult := CommandOutput{Output: string(outputBytes), Error: execErr.Error()}
 
 		resultBytes, err := json.Marshal(failureResult)
 		if err != nil {

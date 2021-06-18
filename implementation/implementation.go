@@ -11,7 +11,7 @@ import (
 	"path"
 )
 
-type FinalOutput struct {
+type CommandOutput struct {
 	Output string `json:"output"`
 	Error  string `json:"error"`
 }

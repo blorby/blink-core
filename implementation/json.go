@@ -28,7 +28,7 @@ func executeCoreJQAction(_ *plugin.ActionContext, request *plugin.ExecuteActionR
 	if execErr != nil {
 		log.Error("Detected failure, building result! Error: ", execErr)
 
-		failureResult := FinalOutput{Output: string(outputBytes), Error: execErr.Error()}
+		failureResult := CommandOutput{Output: string(outputBytes), Error: execErr.Error()}
 
 		resultBytes, err := json.Marshal(failureResult)
 		if err != nil {
@@ -69,7 +69,7 @@ func executeCoreJPAction(_ *plugin.ActionContext, request *plugin.ExecuteActionR
 	if execErr != nil {
 		log.Error("Detected failure, building result! Error: ", execErr)
 
-		failureResult := FinalOutput{Output: string(outputBytes), Error: execErr.Error()}
+		failureResult := CommandOutput{Output: string(outputBytes), Error: execErr.Error()}
 
 		resultBytes, err := json.Marshal(failureResult)
 		if err != nil {

@@ -10,4 +10,4 @@ parameters:
   body:
     type: "string"
     description: "Body for put request"
-    required: true
+    required: false

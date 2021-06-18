@@ -18,8 +18,6 @@ type httpResponse struct {
 	Status     string // e.g. "200 OK"
 	StatusCode int    // e.g. 200
 	Proto      string // e.g. "HTTP/1.0"
-	ProtoMajor int    // e.g. 1
-	ProtoMinor int    // e.g. 0
 
 	Header http.Header
 	Body   string
@@ -64,8 +62,6 @@ func createResponse(response *http.Response, err error) ([]byte, error) {
 		Status:           response.Status,
 		StatusCode:       response.StatusCode,
 		Proto:            response.Proto,
-		ProtoMajor:       response.ProtoMajor,
-		ProtoMinor:       response.ProtoMinor,
 		Header:           response.Header,
 		Body:             string(body),
 		ContentLength:    response.ContentLength,

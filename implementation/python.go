@@ -44,7 +44,7 @@ func executeCorePythonAction(ctx *plugin.ActionContext, request *plugin.ExecuteA
 	if execErr != nil {
 		log.Error("Detected failure, building result! Error: ", execErr)
 
-		failureResult := FinalOutput{Output: string(outputBytes), Error: execErr.Error()}
+		failureResult := CommandOutput{Output: string(outputBytes), Error: execErr.Error()}
 
 		resultBytes, err := json.Marshal(failureResult)
 		if err != nil {
@@ -70,7 +70,7 @@ func executeCorePythonAction(ctx *plugin.ActionContext, request *plugin.ExecuteA
 
 	ctx.ReplaceContext(resultJson.Context)
 
-	result := FinalOutput{Output: resultJson.Output, Error: resultJson.Error}
+	result := CommandOutput{Output: resultJson.Output, Error: resultJson.Error}
 	finalJsonBytes, err := json.Marshal(result)
 	if err != nil {
 		return nil, err

@@ -14,4 +14,4 @@ parameters:
   body:
     type: "string"
     description: "Body for post request"
-    required: true
+    required: false

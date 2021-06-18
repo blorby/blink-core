@@ -13,4 +13,5 @@ parameters:
   unquoted:
     type: "bool"
     description: "If the final result is a string, it will be printed without quotes. [$JP_UNQUOTED]"
+    default: "false"
     required: false
