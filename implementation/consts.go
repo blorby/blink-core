@@ -1,13 +1,17 @@
 package implementation
 
 const (
-	userProviderUrlKey         = "url"
-	userProviderContentTypeKey = "contentType"
-	userProviderBodyKey        = "body"
-	userProviderCodeKey        = "code"
-	pythonRunnerPath           = "python/runner.py"
-	userProviderFlagsKey       = "flags"
-	userProviderJSONKey        = "json"
-	userProviderQueryKey       = "query"
-	userProviderUnquotedKey    = "unquoted"
+	methodKey      = "method"
+	urlKey         = "url"
+	timeoutKey     = "timeout"
+	contentTypeKey = "contentType"
+	headersKey     = "headers"
+	cookiesKey     = "cookies"
+	bodyKey        = "body"
+	codeKey        = "code"
+	jsonKey        = "json"
+	queryKey       = "query"
+	unquotedKey    = "unquoted"
+
+	pythonRunnerPath = "python/runner.py"
 )

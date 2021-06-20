@@ -11,14 +11,14 @@ import (
 )
 
 func executeCoreJQAction(_ *plugin.ActionContext, request *plugin.ExecuteActionRequest) ([]byte, error) {
-	providedJson, ok := request.Parameters[userProviderJSONKey]
+	providedJson, ok := request.Parameters[jsonKey]
 	if !ok {
-		return nil, errors.New("no json provider for execution")
+		return nil, errors.New("no json provided for execution")
 	}
 
-	query, ok := request.Parameters[userProviderQueryKey]
+	query, ok := request.Parameters[queryKey]
 	if !ok {
-		return nil, errors.New("no query provider for execution")
+		return nil, errors.New("no query provided for execution")
 	}
 
 	cmd := fmt.Sprintf("/bin/echo '%s' | /bin/jq %s", providedJson, query)
@@ -44,42 +44,33 @@ func executeCoreJQAction(_ *plugin.ActionContext, request *plugin.ExecuteActionR
 }
 
 func executeCoreJPAction(_ *plugin.ActionContext, request *plugin.ExecuteActionRequest) ([]byte, error) {
-	providedJson, ok := request.Parameters[userProviderJSONKey]
+	providedJson, ok := request.Parameters[jsonKey]
 	if !ok {
-		return nil, errors.New("no json provider for execution")
+		return nil, errors.New("no json provided for execution")
 	}
 
-	query, ok := request.Parameters[userProviderQueryKey]
+	query, ok := request.Parameters[queryKey]
 	if !ok {
-		return nil, errors.New("no query provider for execution")
+		return nil, errors.New("no query provided for execution")
 	}
 
 	unquoted := ""
-	unquotedKey, ok := request.Parameters[userProviderUnquotedKey]
-	if ok {
+	if unquotedKey, ok := request.Parameters[unquotedKey]; ok {
 		unquotedBool, err := strconv.ParseBool(unquotedKey)
 		if err == nil && unquotedBool {
 			unquoted = "--unquoted "
 		}
 	}
+
 	cmd := fmt.Sprintf("/bin/echo '%s' | /bin/jp %s%s", providedJson, unquoted, query)
-	command := exec.Command("/bin/bash", "-c", cmd)
+	output, err := executeCommand("/bin/bash", "-c", cmd)
 
-	outputBytes, execErr := command.CombinedOutput()
-	if execErr != nil {
-		log.Error("Detected failure, building result! Error: ", execErr)
-
-		failureResult := CommandOutput{Output: string(outputBytes), Error: execErr.Error()}
-
-		resultBytes, err := json.Marshal(failureResult)
+	if err != nil {
+		output, err = getCommandFailureResponse(output, err)
 		if err != nil {
-			log.Error("Failed to properly marshal result, err: ", err)
 			return nil, err
 		}
-
-		return resultBytes, nil
 	}
 
-	return outputBytes, nil
-
+	return output, nil
 }

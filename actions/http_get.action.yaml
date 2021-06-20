@@ -1,9 +1,0 @@
-# Describes the action and it's parameters
-name: "http_get"
-description: "Executes get request on provided url"
-enabled: true
-parameters:
-  url:
-    type: "string"
-    description: "The url to send a get request"
-    required: true

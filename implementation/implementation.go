@@ -81,15 +81,11 @@ func NewCorePlugin(rootPluginDirectory string) (*CorePlugin, error) {
 	}
 
 	supportedActions := map[string]ActionHandler{
-		"python":      executeCorePythonAction,
-		"bash":        executeCoreBashAction,
-		"ps":          executeCorePsAction,
-		"jq":          executeCoreJQAction,
-		"jp":          executeCoreJPAction,
-		"http_get":    executeCoreHTTPGetAction,
-		"http_post":   executeCoreHTTPPostAction,
-		"http_put":    executeCoreHTTPPutAction,
-		"http_delete": executeCoreHTTPDeleteAction,
+		"python": executeCorePythonAction,
+		"bash":   executeCoreBashAction,
+		"jq":     executeCoreJQAction,
+		"jp":     executeCoreJPAction,
+		"http":   executeCoreHTTPAction,
 	}
 
 	return &CorePlugin{

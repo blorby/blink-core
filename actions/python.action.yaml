@@ -1,6 +1,6 @@
 # Describes the action and it's parameters
 name: "python"
-description: "Executes user provider python code"
+description: "Executes user provided python code"
 enabled: true
 parameters:
   code:

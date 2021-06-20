@@ -4,15 +4,18 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"github.com/blinkops/blink-sdk/plugin"
 	log "github.com/sirupsen/logrus"
 	"io"
 	"io/ioutil"
 	"net/http"
+	"net/http/cookiejar"
+	"net/url"
+	"strconv"
+	"strings"
 	"time"
 )
-
-
 
 type httpResponse struct {
 	Status     string // e.g. "200 OK"
@@ -34,7 +37,7 @@ type httpResponse struct {
 func readBody(responseBody io.ReadCloser) ([]byte, error) {
 	defer func(Body io.ReadCloser) {
 		if err := Body.Close(); err != nil {
-			log.Debugf("failed to close responseBody reader, Error: %v", err)
+			log.Debugf("failed to close responseBody reader, error: %v", err)
 		}
 	}(responseBody)
 
@@ -78,22 +81,46 @@ func createResponse(response *http.Response, err error) ([]byte, error) {
 	return respBytes, err
 }
 
-func sendRequest(method string, urlAsString string, data interface{}) ([]byte, error) {
-	postBody, err := json.Marshal(data)
+func sendRequest(method string, urlAsString string, timeout string, headers map[string]string, cookies map[string]string, data []byte) ([]byte, error) {
+	requestBody := bytes.NewBuffer(data)
+
+	timeoutAsNumber, err := strconv.ParseInt(timeout, 10, 64)
 	if err != nil {
 		return nil, err
 	}
 
-	requestBody := bytes.NewBuffer(postBody)
+	cookieJar, err := cookiejar.New(nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create cookie jar, error: %v", err)
+	}
+
+	var cookiesList []*http.Cookie
+	for name, value := range cookies {
+		cookiesList = append(cookiesList, &http.Cookie{
+			Name:  name,
+			Value: value,
+		})
+	}
+
+	parsedUrl, err := url.Parse(urlAsString)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse request url, error: %v", err)
+	}
+	cookieJar.SetCookies(parsedUrl, cookiesList)
 
 	// Create new http client with predefined options
 	client := &http.Client{
-		Timeout: time.Second * 60,
+		Jar:     cookieJar,
+		Timeout: time.Second * time.Duration(timeoutAsNumber),
 	}
 
 	request, err := http.NewRequest(method, urlAsString, requestBody)
 	if err != nil {
 		return nil, err
+	}
+
+	for name, value := range headers {
+		request.Header.Set(name, value)
 	}
 
 	response, err := client.Do(request)
@@ -105,80 +132,71 @@ func sendRequest(method string, urlAsString string, data interface{}) ([]byte, e
 	return responseBytes, nil
 }
 
-func executeCoreHTTPGetAction(_ *plugin.ActionContext, request *plugin.ExecuteActionRequest) ([]byte, error) {
-	url, ok := request.Parameters[userProviderUrlKey]
-	if !ok {
-		return nil, errors.New("no url provider for execution")
-	}
+func getHeaders(contentType string, headers string) map[string]string {
+	headerMap := parseStringToMap(headers)
+	headerMap["Content-Type"] = contentType
 
-	response, err := http.Get(url)
-	responseBytes, err := createResponse(response, err)
-	if err != nil {
-		return nil, err
-	}
-
-	return responseBytes, nil
+	return headerMap
 }
 
-func executeCoreHTTPPostAction(_ *plugin.ActionContext, request *plugin.ExecuteActionRequest) ([]byte, error) {
-	url, ok := request.Parameters[userProviderUrlKey]
-	if !ok {
-		return nil, errors.New("no url provider for execution")
-	}
+func parseStringToMap(value string) map[string]string {
+	stringMap := make(map[string]string)
 
-	contentType, ok := request.Parameters[userProviderContentTypeKey]
-	if !ok {
-		return nil, errors.New("no content-type provider for execution")
-	}
+	split := strings.Split(value, " ")
+	for _, currentParameter := range split {
+		if strings.Contains(currentParameter, "=") {
+			currentHeaderSplit := strings.Split(currentParameter, "=")
+			parameterKey, parameterValue := currentHeaderSplit[0], currentHeaderSplit[1]
 
-	bodyAsString, ok := request.Parameters[userProviderBodyKey]
-	if !ok {
-		bodyAsString = ""
+			stringMap[parameterKey] = parameterValue
+		}
 	}
-
-	body, err := json.Marshal(bodyAsString)
-	if err != nil {
-		return nil, err
-	}
-
-	response, err := http.Post(url, contentType, bytes.NewBuffer(body))
-	responseBytes, err := createResponse(response, err)
-	if err != nil {
-		return nil, err
-	}
-
-	return responseBytes, nil
+	return stringMap
 }
 
-func executeCoreHTTPPutAction(_ *plugin.ActionContext, request *plugin.ExecuteActionRequest) ([]byte, error) {
-	url, ok := request.Parameters[userProviderUrlKey]
+func executeCoreHTTPAction(_ *plugin.ActionContext, request *plugin.ExecuteActionRequest) ([]byte, error) {
+	method, ok := request.Parameters[methodKey]
 	if !ok {
-		return nil, errors.New("no url provider for execution")
+		return nil, errors.New("no method provided for execution")
 	}
 
-	bodyAsString, ok := request.Parameters[userProviderBodyKey]
+	url, ok := request.Parameters[urlKey]
 	if !ok {
-		bodyAsString = ""
+		return nil, errors.New("no url provided for execution")
 	}
 
-	responseBytes, err := sendRequest(http.MethodPut, url, bodyAsString)
+	timeout, ok := request.Parameters[timeoutKey]
+	if !ok {
+		timeout = "60"
+	}
+
+	contentType, ok := request.Parameters[contentTypeKey]
+	if !ok {
+		return nil, errors.New("no content-type provided for execution")
+	}
+
+	headers, ok := request.Parameters[headersKey]
+	if !ok {
+		headers = ""
+	}
+
+	cookies, ok := request.Parameters[cookiesKey]
+	if !ok {
+		cookies = ""
+	}
+
+	body, ok := request.Parameters[bodyKey]
+	if !ok {
+		body = ""
+	}
+
+	headerMap := getHeaders(contentType, headers)
+	cookieMap := parseStringToMap(cookies)
+
+	response, err := sendRequest(method, url, timeout, headerMap, cookieMap, []byte(body))
 	if err != nil {
 		return nil, err
 	}
 
-	return responseBytes, nil
-}
-
-func executeCoreHTTPDeleteAction(_ *plugin.ActionContext, request *plugin.ExecuteActionRequest) ([]byte, error) {
-	url, ok := request.Parameters[userProviderUrlKey]
-	if !ok {
-		return nil, errors.New("no url provider for execution")
-	}
-
-	responseBytes, err := sendRequest(http.MethodDelete, url, nil)
-	if err != nil {
-		return nil, err
-	}
-
-	return responseBytes, nil
+	return response, nil
 }

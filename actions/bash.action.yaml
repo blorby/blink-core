@@ -1,6 +1,6 @@
 # Describes the action and it's parameters
 name: "bash"
-description: "Executes user provider bash code"
+description: "Executes user provided bash code"
 enabled: true
 parameters:
   code:

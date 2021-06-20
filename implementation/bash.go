@@ -1,37 +1,25 @@
 package implementation
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/blinkops/blink-sdk/plugin"
-	log "github.com/sirupsen/logrus"
-	"os/exec"
 )
 
 func executeCoreBashAction(_ *plugin.ActionContext, request *plugin.ExecuteActionRequest) ([]byte, error) {
-	code, ok := request.Parameters[userProviderCodeKey]
+	code, ok := request.Parameters[codeKey]
 	if !ok {
-		return nil, errors.New("no code provider for execution")
+		return nil, errors.New("no code provided for execution")
 	}
-	command := exec.Command("/bin/bash",
-		"-c",
-		fmt.Sprintf("%s", code))
 
-	outputBytes, execErr := command.CombinedOutput()
-	if execErr != nil {
-		log.Error("Detected failure, building result! Error: ", execErr)
-
-		failureResult := CommandOutput{Output: string(outputBytes), Error: execErr.Error()}
-
-		resultBytes, err := json.Marshal(failureResult)
+	output, err := executeCommand("/bin/bash", "-c", fmt.Sprintf("%s", code))
+	if err != nil {
+		output, err = getCommandFailureResponse(output, err)
 		if err != nil {
-			log.Error("Failed to properly marshal result, err: ", err)
 			return nil, err
 		}
-
-		return resultBytes, nil
 	}
 
-	return outputBytes, nil
+
+	return output, nil
 }
