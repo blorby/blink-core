@@ -35,10 +35,11 @@ class Context:
 
                 current_item = dict()
 
-            if create_keys and not current_item.__contains__(key_part):
-                current_item[key_part] = dict()
-            elif not create_keys:
-                raise KeyError(f'Key {key} does not exist')
+            if not current_item.__contains__(key_part):
+                if create_keys:
+                    current_item[key_part] = dict()
+                else:
+                    raise KeyError(f'Key {key} does not exist')
 
             current_item = current_item.__getitem__(key_part)
 
