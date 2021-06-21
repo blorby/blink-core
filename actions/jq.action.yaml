@@ -1,0 +1,12 @@
+name: "jq"
+description: "JSON Query"
+enabled: true
+parameters:
+  json:
+    type: "code:json"
+    description: "JSON to query on"
+    required: true
+  query:
+    type: "string"
+    description: "Query to run on JSON"
+    required: true

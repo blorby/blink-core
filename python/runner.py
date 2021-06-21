@@ -63,7 +63,7 @@ def entry_point(raw_input):
 
         execute_user_supplied_code(context=context, connections=connections, code_to_be_executed=code_to_be_executed)
     except Exception as e:
-        raise CodeExecutionError(f'User provider code raised an exception: {str(e)}\n{type(e)}')
+        raise CodeExecutionError(f'User provided code raised an exception: {str(e)}\n{type(e)}')
     finally:
         sys.stdout = sys.__stdout__
 

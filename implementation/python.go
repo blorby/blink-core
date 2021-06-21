@@ -7,24 +7,13 @@ import (
 	"github.com/blinkops/blink-sdk/plugin"
 	"github.com/blinkops/blink-sdk/plugin/connections"
 	log "github.com/sirupsen/logrus"
-	"os/exec"
 )
-
-const (
-	userProviderCodeKey = "code"
-	pythonRunnerPath    = "python/runner.py"
-)
-
-type FinalOutput struct {
-	Output string `json:"output"`
-	Error  string `json:"error"`
-}
 
 func executeCorePythonAction(ctx *plugin.ActionContext, request *plugin.ExecuteActionRequest) ([]byte, error) {
 
-	code, ok := request.Parameters[userProviderCodeKey]
+	code, ok := request.Parameters[codeKey]
 	if !ok {
-		return nil, errors.New("no code provider for execution")
+		return nil, errors.New("no code provided for execution")
 	}
 
 	base64EncodedCode := base64.StdEncoding.EncodeToString([]byte(code))
@@ -42,28 +31,7 @@ func executeCorePythonAction(ctx *plugin.ActionContext, request *plugin.ExecuteA
 	}
 
 	base64EncodedBytes := base64.StdEncoding.EncodeToString(rawJsonBytes)
-	command := exec.Command(
-		"/bin/python",
-		pythonRunnerPath,
-		"--input",
-		base64EncodedBytes)
-
-	log.Infof("Executing %s", command.String())
-
-	outputBytes, execErr := command.CombinedOutput()
-	if execErr != nil {
-		log.Error("Detected failure, building result! Error: ", execErr)
-
-		failureResult := FinalOutput{Output: string(outputBytes), Error: execErr.Error()}
-
-		resultBytes, err := json.Marshal(failureResult)
-		if err != nil {
-			log.Error("Failed to properly marshal result, err: ", err)
-			return nil, err
-		}
-
-		return resultBytes, nil
-	}
+	output, err := executeCommand("/bin/python", pythonRunnerPath, "--input", base64EncodedBytes)
 
 	resultJson := struct {
 		Context map[string]interface{} `json:"context"`
@@ -72,15 +40,29 @@ func executeCorePythonAction(ctx *plugin.ActionContext, request *plugin.ExecuteA
 		Error   string                 `json:"error"`
 	}{}
 
-	err = json.Unmarshal(outputBytes, &resultJson)
+	if err != nil {
+		output, err = getCommandFailureResponse(output, err)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	err = json.Unmarshal(output, &resultJson)
 	if err != nil {
 		log.Error("Failed to unmarshal result, err: ", err)
 		return nil, err
 	}
 
 	ctx.ReplaceContext(resultJson.Context)
+	if resultJson.Error == "" {
+		outputBytes, err := json.Marshal(resultJson.Output)
+		if err != nil {
+			return nil, err
+		}
+		return outputBytes, nil
+	}
 
-	result := FinalOutput{Output: resultJson.Output, Error: resultJson.Error}
+	result := CommandOutput{Output: resultJson.Output, Error: resultJson.Error}
 	finalJsonBytes, err := json.Marshal(result)
 	if err != nil {
 		return nil, err

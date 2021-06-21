@@ -24,7 +24,7 @@ COPY actions actions/
 RUN apt-get update && \
     apt-get install -y ca-certificates && \
     update-ca-certificates && \
-    apt-get install -y python3 python3-apt python3-dev python3-distutils curl && \
+    apt-get install -y python3 python3-apt python3-dev python3-distutils curl jq jp && \
     ln /usr/bin/python3 /usr/bin/python && \
     curl https://bootstrap.pypa.io/get-pip.py | python && \
     pip install -r requirements.txt
