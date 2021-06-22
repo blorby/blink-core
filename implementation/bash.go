@@ -1,6 +1,7 @@
 package implementation
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/blinkops/blink-sdk/plugin"
@@ -21,7 +22,19 @@ func getEnvVarsFromContext(actionContext *plugin.ActionContext) []string {
 	contextEntries := map[string]string{}
 	if actionContext != nil {
 		for contextKey, contextValue := range actionContext.GetAllContextEntries() {
-			contextEntries[contextKey] = fmt.Sprintf("%v", contextValue)
+			switch contextValue.(type) {
+			case string:
+				contextEntries[contextKey] = contextValue.(string)
+			case map[string]interface{}, []interface{}:
+				marshaledValue, err := json.Marshal(contextValue)
+				if err == nil {
+					contextEntries[contextKey] = string(marshaledValue)
+				} else {
+					contextEntries[contextKey] = fmt.Sprintf("%v", contextValue)
+				}
+			default:
+				contextEntries[contextKey] = fmt.Sprintf("%v", contextValue)
+			}
 		}
 	}
 
