@@ -142,7 +142,7 @@ func getHeaders(contentType string, headers string) map[string]string {
 func parseStringToMap(value string) map[string]string {
 	stringMap := make(map[string]string)
 
-	split := strings.Split(value, " ")
+	split := strings.Split(value, "\n")
 	for _, currentParameter := range split {
 		if strings.Contains(currentParameter, "=") {
 			currentHeaderSplit := strings.Split(currentParameter, "=")
