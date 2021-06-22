@@ -1,3 +1,5 @@
+import json
+
 from exception import ContextStructureError
 
 
@@ -8,7 +10,10 @@ class Context:
         self.internal_dict: dict = internal_dict
 
     def __getitem__(self, item: str):
-        return self.__resolve_inner_key(key=item)
+        inner_item = self.__resolve_inner_key(key=item)
+        if type(inner_item) == dict:
+            return json.dumps(obj=inner_item, indent=4)
+        return inner_item
 
     def __setitem__(self, key, value):
         key_parts = key.split(self._KEY_SEPARATOR)

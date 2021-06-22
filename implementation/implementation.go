@@ -48,6 +48,10 @@ func (p *CorePlugin) ExecuteAction(ctx *plugin.ActionContext, request *plugin.Ex
 		return nil, err
 	}
 
+	if len(resultBytes) > 0 && resultBytes[len(resultBytes) - 1] == '\n' {
+		resultBytes = resultBytes[:len(resultBytes) - 1]
+	}
+
 	return &plugin.ExecuteActionResponse{
 		ErrorCode: 0,
 		Result:    resultBytes,

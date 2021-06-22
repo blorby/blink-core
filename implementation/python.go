@@ -55,11 +55,7 @@ func executeCorePythonAction(ctx *plugin.ActionContext, request *plugin.ExecuteA
 
 	ctx.ReplaceContext(resultJson.Context)
 	if resultJson.Error == "" {
-		outputBytes, err := json.Marshal(resultJson.Output)
-		if err != nil {
-			return nil, err
-		}
-		return outputBytes, nil
+		return []byte(resultJson.Output), nil
 	}
 
 	result := CommandOutput{Output: resultJson.Output, Error: resultJson.Error}
