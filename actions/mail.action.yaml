@@ -1,0 +1,20 @@
+# Describes the action and it's parameters
+name: "mail"
+description: "Send an e-mail on behalf of Blink"
+enabled: true
+parameters:
+  to:
+    type: "string"
+    description: "Enter the receivers email address"
+    placeholder: "The receivers email address"
+    required: true
+  subject:
+    type: "string"
+    description: "This is the subject of the mail"
+    placeholder: "Enter the mail subject"
+    required: true
+  content:
+    type: "textarea"
+    description: "The body of the mail, write up your mail to send as you wish"
+    placeholder: "Enter the mail's body"
+    required: true
