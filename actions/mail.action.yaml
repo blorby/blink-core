@@ -1,5 +1,5 @@
 # Describes the action and it's parameters
-name: "mail"
+name: "email"
 description: "Send an e-mail on behalf of Blink"
 enabled: true
 parameters:

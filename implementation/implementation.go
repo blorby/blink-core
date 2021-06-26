@@ -93,7 +93,7 @@ func NewCorePlugin(rootPluginDirectory string) (*CorePlugin, error) {
 		"jq":     executeCoreJQAction,
 		"jp":     executeCoreJPAction,
 		"http":   executeCoreHTTPAction,
-		"mail":   executeCoreMailAction,
+		"email":   executeCoreMailAction,
 	}
 
 	return &CorePlugin{

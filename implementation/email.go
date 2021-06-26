@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/blinkops/blink-sdk/plugin"
+	"github.com/prometheus/common/log"
 	gomail "gopkg.in/mail.v2"
 	"strconv"
 	"strings"
@@ -13,7 +14,9 @@ import (
 func executeCoreMailAction(context *plugin.ActionContext, request *plugin.ExecuteActionRequest) ([]byte, error) {
 	mailCredentials, err := context.GetCredentials("core-mail")
 	if err != nil {
-		return nil, errors.New("mail connection was not provided")
+		err = fmt.Errorf("mail connection was not provided")
+		log.Error(err)
+		return nil, err
 	}
 
 	fromEmail, ok := mailCredentials["email"]
@@ -49,6 +52,8 @@ func executeCoreMailAction(context *plugin.ActionContext, request *plugin.Execut
 	port, err := strconv.Atoi(smtpPortString)
 
 	if err != nil {
+		err = fmt.Errorf("provided smtp port is invalid, error: %v", err)
+		log.Error(err)
 		return nil, err
 	}
 
