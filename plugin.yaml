@@ -7,3 +7,27 @@ tags:
   - internal
 
 provider: "blink"
+connection_types:
+  core-mail:
+    email:
+      field_type: "input"
+      required: true
+      placeholder: "The email mails will be sent from"
+      input_type: "text"
+    password:
+      field_type: "input"
+      required: true
+      placeholder: "The password to the email"
+      input_type: "password"
+    smtpHost:
+      field_type: "input"
+      required: true
+      placeholder: "The smtp server url"
+      input_type: "text"
+      default: "smtp.gmail.com"
+    smtpPort:
+      field_type: "input"
+      required: true
+      placeholder: "The smtp server port"
+      input_type: "number"
+      default: 587

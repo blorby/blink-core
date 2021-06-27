@@ -12,6 +12,9 @@ const (
 	jsonKey        = "json"
 	queryKey       = "query"
 	unquotedKey    = "unquoted"
+	mailToKey      = "to"
+	mailSubjectKey = "subject"
+	mailContentKey = "content"
 
 	pythonRunnerPath = "python/runner.py"
 )

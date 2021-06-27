@@ -59,7 +59,10 @@ func (p *CorePlugin) ExecuteAction(ctx *plugin.ActionContext, request *plugin.Ex
 }
 
 func (p *CorePlugin) TestCredentials(_ map[string]connections.ConnectionInstance) (*plugin.CredentialsValidationResponse, error) {
-	return nil, errors.New("credentials validation is not supported on this plugin :(")
+	return &plugin.CredentialsValidationResponse{
+		AreCredentialsValid: true,
+		RawValidationResponse: []byte("credentials validation is not supported on this plugin :("),
+	}, nil
 }
 
 func NewCorePlugin(rootPluginDirectory string) (*CorePlugin, error) {
@@ -90,6 +93,7 @@ func NewCorePlugin(rootPluginDirectory string) (*CorePlugin, error) {
 		"jq":     executeCoreJQAction,
 		"jp":     executeCoreJPAction,
 		"http":   executeCoreHTTPAction,
+		"email":   executeCoreMailAction,
 	}
 
 	return &CorePlugin{
