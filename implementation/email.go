@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/blinkops/blink-sdk/plugin"
-	"github.com/prometheus/common/log"
+	log "github.com/sirupsen/logrus"
 	gomail "gopkg.in/mail.v2"
 	"strconv"
 	"strings"
