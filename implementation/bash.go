@@ -25,22 +25,26 @@ func getEnvVarsFromContext(actionContext *plugin.ActionContext) []string {
 			switch contextValue.(type) {
 			case string:
 				contextEntries[contextKey] = contextValue.(string)
-			case map[string]interface{}:
-				for key, value := range contextValue.(map[string]interface{}) {
-					formattedValue, err := json.Marshal(value)
-
-					if err == nil {
-						contextEntries[contextKey + "_" + key] = string(formattedValue)
-					} else {
-						contextEntries[contextKey + "_" + key] = fmt.Sprintf("%v", value)
-					}
-				}
-			case interface{}:
+			case map[string]interface{}, interface{}:
 				marshaledValue, err := json.Marshal(contextValue)
 				if err == nil {
 					contextEntries[contextKey] = string(marshaledValue)
 				} else {
 					contextEntries[contextKey] = fmt.Sprintf("%v", contextValue)
+				}
+
+				contextValueMap, ok := contextValue.(map[string]interface{})
+
+				if ok {
+					for key, value := range contextValueMap {
+						formattedValue, err := json.Marshal(value)
+
+						if err == nil {
+							contextEntries[contextKey + "_" + key] = string(formattedValue)
+						} else {
+							contextEntries[contextKey + "_" + key] = fmt.Sprintf("%v", value)
+						}
+					}
 				}
 			default:
 				contextEntries[contextKey] = fmt.Sprintf("%v", contextValue)
