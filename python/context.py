@@ -70,9 +70,6 @@ class Context:
         path = key.split(self._KEY_SEPARATOR)
 
         if path[0] != self._VARIABLES_PREFIX:
-            path = [self._VARIABLES_PREFIX] + path
-
-        if len(path) == 1:
             raise KeyError(f'Key {key} is invalid')
 
         return path
