@@ -25,7 +25,7 @@ func getEnvVarsFromContext(actionContext *plugin.ActionContext) []string {
 			switch contextValue.(type) {
 			case string:
 				contextEntries[contextKey] = contextValue.(string)
-			case map[string]interface{}, interface{}:
+			case map[string]interface{}, []interface{}:
 				marshaledValue, err := json.Marshal(contextValue)
 				if err == nil {
 					contextEntries[contextKey] = string(marshaledValue)
