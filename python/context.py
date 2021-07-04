@@ -5,6 +5,7 @@ from exception import ContextStructureError
 
 class Context:
     _KEY_SEPARATOR = '.'
+    _VARIABLES_PREFIX = 'variables'
 
     def __init__(self, internal_dict: dict):
         self.internal_dict: dict = internal_dict
@@ -49,3 +50,26 @@ class Context:
             current_item = current_item.__getitem__(key_part)
 
         return current_item
+
+    def get(self, key):
+        return self.__getitem__(key)
+
+    def set(self, key, value):
+        path = self._validate_prefix(key)
+        key = self._KEY_SEPARATOR.join(path)
+        self.__setitem__(key, value)
+
+    def delete(self, key):
+        path = self._validate_prefix(key)
+        key_to_delete = path.pop(len(path) - 1)
+        key = self._KEY_SEPARATOR.join(path)
+        parent_dict = self.__resolve_inner_key(key)
+        parent_dict.pop(key_to_delete, None)
+
+    def _validate_prefix(self, key):
+        path = key.split(self._KEY_SEPARATOR)
+
+        if path[0] != self._VARIABLES_PREFIX:
+            raise KeyError(f'Key {key} is invalid')
+
+        return path
