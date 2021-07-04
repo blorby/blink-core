@@ -49,3 +49,25 @@ class Context:
             current_item = current_item.__getitem__(key_part)
 
         return current_item
+
+    def get(self, key):
+        path = key.split(".")
+        result = self.internal_dict
+
+        for sub_key in path:
+            result = result.get(sub_key, {})
+
+        return result
+
+    def set(self, key, value):
+        path = key.split(".")
+        path = ["variables"] + path
+        result = self.internal_dict
+
+        for sub_key in path[:-1]:
+            result = result.setdefault(sub_key, {})
+
+        result[path[-1]] = value
+
+    def delete(self, key):
+        self.internal_dict["variables"].pop(key, None)
