@@ -1,6 +1,6 @@
 # Describes the action and it's parameters
 name: "http"
-description: "Executes delete request on provided url"
+description: "Executes the request method on provided url"
 enabled: true
 parameters:
   method:
@@ -15,7 +15,7 @@ parameters:
       - "DELETE"
   url:
     type: "string"
-    description: "The url to send a delete request"
+    description: "The url to communicate with"
     required: true
   headers:
     type: "code:map"
