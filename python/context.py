@@ -6,6 +6,9 @@ from exception import ContextStructureError
 class Context:
     _KEY_SEPARATOR = '.'
     _VARIABLES_PREFIX = 'variables'
+    _INPUTS_PREFIX = 'inputs'
+    _STEPS_PREFIX = 'steps'
+    _ALL_PREFIXES = [_VARIABLES_PREFIX, _INPUTS_PREFIX, _STEPS_PREFIX]
 
     def __init__(self, internal_dict: dict):
         self.internal_dict: dict = internal_dict
@@ -52,6 +55,11 @@ class Context:
         return current_item
 
     def get(self, key):
+        path = key.split(self._KEY_SEPARATOR)
+
+        if path[0] not in self._ALL_PREFIXES:
+            path = [self._VARIABLES_PREFIX] + path
+            key = (self._KEY_SEPARATOR).join(path)
         return self.__getitem__(key)
 
     def set(self, key, value):
@@ -70,6 +78,6 @@ class Context:
         path = key.split(self._KEY_SEPARATOR)
 
         if path[0] != self._VARIABLES_PREFIX:
-            raise KeyError(f'Key {key} is invalid')
+            path = [self._KEY_SEPARATOR] + path
 
         return path
