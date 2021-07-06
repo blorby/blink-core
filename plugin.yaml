@@ -7,11 +7,12 @@ tags:
   - internal
 
 provider: "blink"
-connection_type_reference: "aws"
 connection_types:
   core-mail:
-    test:
-      field_type: "input"
-      required: true
-      placeholder: "Test"
-      input_type: "text"
+    fields:
+      test:
+        field_type: "input"
+        required: true
+        placeholder: "Test"
+        input_type: "text"
+    reference: "aws"
