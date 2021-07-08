@@ -57,9 +57,9 @@ class Context:
     def get(self, key):
         path = key.split(self._KEY_SEPARATOR)
 
-        if path[0] not in self._ALL_PREFIXES:
+        if len(path) > 1 and path[0] not in self._ALL_PREFIXES:
             path = [self._VARIABLES_PREFIX] + path
-            key = (self._KEY_SEPARATOR).join(path)
+            key = self._KEY_SEPARATOR.join(path)
         return self.__getitem__(key)
 
     def set(self, key, value):
@@ -77,7 +77,7 @@ class Context:
     def _validate_prefix(self, key):
         path = key.split(self._KEY_SEPARATOR)
 
-        if path[0] != self._VARIABLES_PREFIX:
-            path = [self._KEY_SEPARATOR] + path
+        if len(path) > 1 and path[0] != self._VARIABLES_PREFIX:
+            path = [self._VARIABLES_PREFIX] + path
 
         return path
