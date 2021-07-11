@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 	"github.com/blinkops/blink-sdk/plugin"
+	"github.com/blinkops/blink-sdk/plugin/connections"
+	log "github.com/sirupsen/logrus"
 	"strings"
 )
 
@@ -40,9 +42,9 @@ func getEnvVarsFromContext(actionContext *plugin.ActionContext) []string {
 						formattedValue, err := json.Marshal(value)
 
 						if err == nil {
-							contextEntries[contextKey + "_" + key] = string(formattedValue)
+							contextEntries[contextKey+"_"+key] = string(formattedValue)
 						} else {
-							contextEntries[contextKey + "_" + key] = fmt.Sprintf("%v", value)
+							contextEntries[contextKey+"_"+key] = fmt.Sprintf("%v", value)
 						}
 					}
 				}
@@ -60,6 +62,25 @@ func getEnvVarsFromContext(actionContext *plugin.ActionContext) []string {
 	return finalEnvVars
 }
 
+func getConnectionsAsEnvVariables(ctxConnections map[string]connections.ConnectionInstance) []string {
+
+	var resolvedConnections []string
+	for _, connection := range ctxConnections {
+		resolvedCredentials, err := connection.ResolveCredentials()
+		if err != nil {
+			log.Errorf("failed to resolve connection: \"%s\", credentials, error: %v", connection.Name, err)
+			continue
+		}
+
+		for credentialEntry, credentialValue := range resolvedCredentials {
+			variable := fmt.Sprintf("%s_%s=%v", strings.ToUpper(connection.Name), strings.ToUpper(credentialEntry), credentialValue)
+			resolvedConnections = append(resolvedConnections, variable)
+		}
+	}
+
+	return resolvedConnections
+}
+
 func executeCoreBashAction(ctx *plugin.ActionContext, request *plugin.ExecuteActionRequest) ([]byte, error) {
 	code, ok := request.Parameters[codeKey]
 	if !ok {
@@ -67,7 +88,7 @@ func executeCoreBashAction(ctx *plugin.ActionContext, request *plugin.ExecuteAct
 	}
 
 	environmentVariables := getEnvVarsFromContext(ctx)
-
+	environmentVariables = append(environmentVariables, getConnectionsAsEnvVariables(ctx.GetAllConnections())...)
 	output, err := executeCommand(environmentVariables, "/bin/bash", "-c", fmt.Sprintf("%s", code))
 	if err != nil {
 		output, err = getCommandFailureResponse(output, err)
