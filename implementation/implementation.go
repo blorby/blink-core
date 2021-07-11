@@ -95,6 +95,7 @@ func NewCorePlugin(rootPluginDirectory string) (*CorePlugin, error) {
 		"http":    executeCoreHTTPAction,
 		"email":   executeCoreMailAction,
 		"aws":     executeCoreAWSAction,
+		"kubectl": executeCoreKubernetesAction,
 	}
 
 	return &CorePlugin{
