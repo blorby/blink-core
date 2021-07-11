@@ -40,9 +40,9 @@ func getEnvVarsFromContext(actionContext *plugin.ActionContext) []string {
 						formattedValue, err := json.Marshal(value)
 
 						if err == nil {
-							contextEntries[contextKey + "_" + key] = string(formattedValue)
+							contextEntries[contextKey+"_"+key] = string(formattedValue)
 						} else {
-							contextEntries[contextKey + "_" + key] = fmt.Sprintf("%v", value)
+							contextEntries[contextKey+"_"+key] = fmt.Sprintf("%v", value)
 						}
 					}
 				}
@@ -60,6 +60,26 @@ func getEnvVarsFromContext(actionContext *plugin.ActionContext) []string {
 	return finalEnvVars
 }
 
+func getConnectionsAsEnvVariables(actionContext *plugin.ActionContext) []string {
+	ctxConnections := actionContext.GetAllConnections()
+	var connections []string
+	for _, connection := range ctxConnections {
+		resolvedCredentials, err := connection.ResolveCredentials()
+		if err != nil {
+			continue
+		}
+		for key, value := range resolvedCredentials {
+			variable := fmt.Sprintf("%s=%v", strings.ToUpper(key), value)
+			if len(ctxConnections) > 1 {
+				variable = fmt.Sprintf("%s_%s", connection.Name, variable)
+			}
+			connections = append(connections, variable)
+		}
+	}
+
+	return connections
+}
+
 func executeCoreBashAction(ctx *plugin.ActionContext, request *plugin.ExecuteActionRequest) ([]byte, error) {
 	code, ok := request.Parameters[codeKey]
 	if !ok {
@@ -67,7 +87,7 @@ func executeCoreBashAction(ctx *plugin.ActionContext, request *plugin.ExecuteAct
 	}
 
 	environmentVariables := getEnvVarsFromContext(ctx)
-
+	environmentVariables = append(environmentVariables, getConnectionsAsEnvVariables(ctx)...)
 	output, err := executeCommand(environmentVariables, "/bin/bash", "-c", fmt.Sprintf("%s", code))
 	if err != nil {
 		output, err = getCommandFailureResponse(output, err)

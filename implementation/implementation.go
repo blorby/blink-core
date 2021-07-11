@@ -48,8 +48,8 @@ func (p *CorePlugin) ExecuteAction(ctx *plugin.ActionContext, request *plugin.Ex
 		return nil, err
 	}
 
-	if len(resultBytes) > 0 && resultBytes[len(resultBytes) - 1] == '\n' {
-		resultBytes = resultBytes[:len(resultBytes) - 1]
+	if len(resultBytes) > 0 && resultBytes[len(resultBytes)-1] == '\n' {
+		resultBytes = resultBytes[:len(resultBytes)-1]
 	}
 
 	return &plugin.ExecuteActionResponse{
@@ -60,7 +60,7 @@ func (p *CorePlugin) ExecuteAction(ctx *plugin.ActionContext, request *plugin.Ex
 
 func (p *CorePlugin) TestCredentials(_ map[string]connections.ConnectionInstance) (*plugin.CredentialsValidationResponse, error) {
 	return &plugin.CredentialsValidationResponse{
-		AreCredentialsValid: true,
+		AreCredentialsValid:   true,
 		RawValidationResponse: []byte("credentials validation is not supported on this plugin :("),
 	}, nil
 }
@@ -88,12 +88,13 @@ func NewCorePlugin(rootPluginDirectory string) (*CorePlugin, error) {
 	}
 
 	supportedActions := map[string]ActionHandler{
-		"python": executeCorePythonAction,
-		"bash":   executeCoreBashAction,
-		"jq":     executeCoreJQAction,
-		"jp":     executeCoreJPAction,
-		"http":   executeCoreHTTPAction,
+		"python":  executeCorePythonAction,
+		"bash":    executeCoreBashAction,
+		"jq":      executeCoreJQAction,
+		"jp":      executeCoreJPAction,
+		"http":    executeCoreHTTPAction,
 		"email":   executeCoreMailAction,
+		"aws":     executeCoreAWSAction,
 	}
 
 	return &CorePlugin{

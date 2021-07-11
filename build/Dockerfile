@@ -24,10 +24,18 @@ COPY actions actions/
 RUN apt-get update && \
     apt-get install -y ca-certificates && \
     update-ca-certificates && \
-    apt-get install -y python3 python3-apt python3-dev python3-distutils curl jq jp && \
+    apt-get install -y python3 python3-apt python3-dev python3-distutils python3-venv curl jq jp unzip && \
     ln /usr/bin/python3 /usr/bin/python && \
     curl https://bootstrap.pypa.io/get-pip.py | python && \
-    pip install -r requirements.txt
+    pip install -r requirements.txt && \
+    curl "https://s3.amazonaws.com/aws-cli/awscli-bundle-1.16.312.zip" -o "awscli-bundle.zip" && \
+    unzip awscli-bundle.zip && \
+    ./awscli-bundle/install -i /usr/aws -b /usr/bin/aws && \
+    chmod +x /usr/bin/aws && \
+    rm -rf ./awscli-bundle* && \
+    curl "https://amazon-eks.s3.us-west-2.amazonaws.com/1.20.4/2021-04-12/bin/linux/amd64/kubectl" -o "/usr/bin/kubectl" && \
+    chmod +x /usr/bin/kubectl
+
 
 # Expose the gRPC port.
 EXPOSE 1337
