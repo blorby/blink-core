@@ -1,9 +1,9 @@
 # Describes the action and it's parameters
 name: "kubectl"
-description: "Executes Kubernetes CLI (KubeCTL) command"
+description: "Executes Kubernetes CLI (kubectl) command"
 enabled: true
 parameters:
   command:
     type: "string"
-    description: "Kubernetes CLI (KubeCTL) Command"
+    description: "Kubernetes CLI (kubectl) Command"
     required: true

@@ -9,6 +9,8 @@ import (
 	"strings"
 )
 
+type environmentVariables []string
+
 const (
 	regionParameterName       = "region"
 	commandParameterName      = "command"
@@ -83,16 +85,14 @@ func executeCoreKubernetesAction(ctx *plugin.ActionContext, request *plugin.Exec
 	pathToKubeConfigDirectory := fmt.Sprintf("%s/.kube", temporaryPath)
 	pathToKubeConfig := fmt.Sprintf("%s/config", pathToKubeConfigDirectory)
 
-	if output, err := executeCommand(nil, "/bin/mkdir", "-p", pathToKubeConfigDirectory); err != nil {
-		if _, err := getCommandFailureResponse(output, err); err != nil {
-			return nil, err
-		}
+	if output, err := executeCommand(environmentVariables{}, "/bin/mkdir", "-p", pathToKubeConfigDirectory); err != nil {
+		return getCommandFailureResponse(output, err)
 	}
 
 	defer func() {
 		// Delete kube config directory
-		if _, err := executeCommand(nil, "/bin/rm", "-rf", temporaryPath); err != nil {
-			log.Errorf("failed to delete kube config, error: %v", err)
+		if _, err := executeCommand(environmentVariables{}, "/bin/rm", "-r", temporaryPath); err != nil {
+			log.Errorf("failed to delete kube config credentials from temporary filesystem, error: %v", err)
 		}
 	}()
 
@@ -101,66 +101,50 @@ func executeCoreKubernetesAction(ctx *plugin.ActionContext, request *plugin.Exec
 		verify = false
 	}
 
-	if err := initKubernetesEnvironment(temporaryPath, fmt.Sprintf("%s", bearerToken), fmt.Sprintf("%s", apiServerURL), verify); err != nil {
-		return nil, err
-	}
-
-	environmentVariables := []string{
+	environment := environmentVariables{
 		fmt.Sprintf("KUBECONFIG=%s", pathToKubeConfig),
 	}
 
+	if output, err := initKubernetesEnvironment(temporaryPath, environment, fmt.Sprintf("%s", bearerToken), fmt.Sprintf("%s", apiServerURL), verify); err != nil {
+		return getCommandFailureResponse(output, err)
+	}
+
 	command = fmt.Sprintf("--user %s --cluster %s %s", kubernetesUsername, kubernetesCluster, command)
-	output, err := executeCommand(environmentVariables, "/bin/kubectl", strings.Split(command, " ")...)
+	output, err := executeCommand(environment, "/bin/kubectl", strings.Split(command, " ")...)
 	if err != nil {
-		output, err = getCommandFailureResponse(output, err)
-		if err != nil {
-			return nil, err
-		}
+		return getCommandFailureResponse(output, err)
 	}
 
 	return output, nil
 }
 
-func initKubernetesEnvironment(temporaryPath string, bearerToken string, apiServerURL string, verifyCertificate bool) error {
+func initKubernetesEnvironment(temporaryPath string, environment environmentVariables, bearerToken string, apiServerURL string, verifyCertificate bool) ([]byte, error) {
 	pathToKubeConfigDirectory := fmt.Sprintf("%s/.kube", temporaryPath)
 	pathToKubeConfig := fmt.Sprintf("%s/config", pathToKubeConfigDirectory)
 
-	output, err := executeCommand(nil, "/bin/kubectl", "config", "view", "--merge", "--flatten", ">", pathToKubeConfig)
+	output, err := executeCommand(environmentVariables{}, "/bin/kubectl", "config", "view", "--merge", "--flatten", ">", pathToKubeConfig)
 	if err != nil {
-		if _, err := getCommandFailureResponse(output, err); err != nil {
-			return err
-		}
-	}
-
-	environmentVariables := []string{
-		fmt.Sprintf("KUBECONFIG=%s", pathToKubeConfig),
+		return output, err
 	}
 
 	clusterBaseCmd := fmt.Sprintf("config set-cluster cluster")
 	cmd := fmt.Sprintf("%s --server=%s", clusterBaseCmd, apiServerURL)
-	output, err = executeCommand(environmentVariables, "/bin/kubectl", strings.Split(cmd, " ")...)
-	if err != nil {
-		if _, err := getCommandFailureResponse(output, err); err != nil {
-			return err
-		}
+
+	if output, err := executeCommand(environment, "/bin/kubectl", strings.Split(cmd, " ")...); err != nil {
+		return output, err
 	}
 
 	if !verifyCertificate {
 		cmd := fmt.Sprintf("%s --insecure-skip-tls-verify=true", clusterBaseCmd)
-		output, err = executeCommand(environmentVariables, "/bin/kubectl", strings.Split(cmd, " ")...)
-		if err != nil {
-			if _, err := getCommandFailureResponse(output, err); err != nil {
-				return err
-			}
+		if output, err = executeCommand(environment, "/bin/kubectl", strings.Split(cmd, " ")...); err != nil {
+			return output, err
 		}
 	}
 
-	output, err = executeCommand(environmentVariables, "/bin/kubectl", "config", "set-credentials", "user", fmt.Sprintf("--token=%s", bearerToken))
+	output, err = executeCommand(environment, "/bin/kubectl", "config", "set-credentials", "user", fmt.Sprintf("--token=%s", bearerToken))
 	if err != nil {
-		if _, err := getCommandFailureResponse(output, err); err != nil {
-			return err
-		}
+		return output, err
 	}
 
-	return nil
+	return nil, nil
 }

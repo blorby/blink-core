@@ -1,11 +1,11 @@
 # Describes the action and it's parameters
 name: "aws"
-description: "Executes aws cli command"
+description: "Executes Amazon Web Services (AWS) CLI command"
 enabled: true
 parameters:
   command:
     type: "string"
-    description: "AWS CLI Command"
+    description: "Amazon Web Services (AWS) CLI Command"
     required: true
   region:
     type: "string"
