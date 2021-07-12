@@ -122,13 +122,14 @@ func initKubernetesEnvironment(temporaryPath string, environment environmentVari
 	pathToKubeConfigDirectory := fmt.Sprintf("%s/.kube", temporaryPath)
 	pathToKubeConfig := fmt.Sprintf("%s/config", pathToKubeConfigDirectory)
 
-	output, err := executeCommand(environmentVariables{}, "/bin/kubectl", "config", "view", "--merge", "--flatten", ">", pathToKubeConfig)
+	cmd := "$(/bin/kubectl config view --merge --flatten)"
+	output, err := executeCommand(environmentVariables{}, "/bin/echo", cmd, ">", pathToKubeConfig)
 	if err != nil {
 		return output, err
 	}
 
 	clusterBaseCmd := fmt.Sprintf("config set-cluster cluster")
-	cmd := fmt.Sprintf("%s --server=%s", clusterBaseCmd, apiServerURL)
+	cmd = fmt.Sprintf("%s --server=%s", clusterBaseCmd, apiServerURL)
 
 	if output, err := executeCommand(environment, "/bin/kubectl", strings.Split(cmd, " ")...); err != nil {
 		return output, err
