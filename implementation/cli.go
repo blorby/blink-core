@@ -57,7 +57,7 @@ func executeCoreAWSAction(ctx *plugin.ActionContext, request *plugin.ExecuteActi
 func executeCoreKubernetesAction(ctx *plugin.ActionContext, request *plugin.ExecuteActionRequest) ([]byte, error) {
 	credentials, err := ctx.GetCredentials("kubernetes")
 	if err != nil {
-		return nil, errors.New("connection to K8S wasn't provided")
+		return nil, err
 	}
 
 	bearerToken, ok := credentials["bearer_token"]
