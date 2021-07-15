@@ -3,11 +3,11 @@ name: "aws"
 description: "Executes Amazon Web Services (AWS) CLI command"
 enabled: true
 parameters:
-  command:
+  Command:
     type: "string"
-    description: "Amazon Web Services (AWS) CLI Command"
+    description: "Command to pass to aws cli"
     required: true
-  region:
+  Region:
     type: "string"
-    description: "AWS Region for CLI Command"
+    description: "Region for aws command"
     required: true

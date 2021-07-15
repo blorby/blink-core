@@ -12,8 +12,8 @@ import (
 type environmentVariables []string
 
 const (
-	regionParameterName       = "region"
-	commandParameterName      = "command"
+	regionParameterName       = "Region"
+	commandParameterName      = "Command"
 	regionEnvironmentVariable = "AWS_DEFAULT_REGION"
 
 	kubernetesUsername = "user"
