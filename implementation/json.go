@@ -63,7 +63,7 @@ func executeCoreJPAction(_ *plugin.ActionContext, request *plugin.ExecuteActionR
 	}
 
 	cmd := fmt.Sprintf("/bin/echo '%s' | /bin/jp %s%s", providedJson, unquoted, query)
-	output, err := executeCommand(nil, "/bin/bash", "-c", cmd)
+	output, err := executeCommand(nil, "", "/bin/bash", "-c", cmd)
 
 	if err != nil {
 		output, err = getCommandFailureResponse(output, err)

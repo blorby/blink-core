@@ -6,13 +6,17 @@ import (
 	"os/exec"
 )
 
-func executeCommand(environment []string, name string, args ...string) ([]byte, error) {
+func executeCommand(environment []string, directory string, name string, args ...string) ([]byte, error) {
 	command := exec.Command(
 		name,
 		args...)
 
 	if environment != nil {
 		command.Env = environment
+	}
+
+	if directory != "" {
+		command.Dir = directory
 	}
 
 	log.Infof("Executing %s", command.String())

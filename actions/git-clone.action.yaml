@@ -1,0 +1,13 @@
+name: "git-clone"
+description: "Git clone"
+enabled: true
+parameters:
+  repository:
+    type: "string"
+    description: "Git repository to clone"
+    required: true
+  branch:
+    type: "string"
+    description: "Repository branch to clone"
+    default: "main"
+    required: true

@@ -31,7 +31,7 @@ func executeCorePythonAction(ctx *plugin.ActionContext, request *plugin.ExecuteA
 	}
 
 	base64EncodedBytes := base64.StdEncoding.EncodeToString(rawJsonBytes)
-	output, err := executeCommand(nil, "/bin/python", pythonRunnerPath, "--input", base64EncodedBytes)
+	output, err := executeCommand(nil, "", "/bin/python", pythonRunnerPath, "--input", base64EncodedBytes)
 
 	resultJson := struct {
 		Context map[string]interface{} `json:"context"`
