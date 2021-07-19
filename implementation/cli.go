@@ -167,6 +167,45 @@ func executeCoreGoogleCloudAction(ctx *plugin.ActionContext, request *plugin.Exe
 	return output, nil
 }
 
+func executeCoreAzureAction(ctx *plugin.ActionContext, request *plugin.ExecuteActionRequest) ([]byte, error) {
+	credentials, err := ctx.GetCredentials("azure")
+	if err != nil {
+		return nil, err
+	}
+
+	appId, ok := credentials["app_id"]
+	if !ok {
+		return nil, errors.New("connection to Azure is invalid")
+	}
+
+	clientSecret, ok := credentials["client_secret"]
+	if !ok {
+		return nil, errors.New("connection to Azure is invalid")
+	}
+
+	tenantId, ok := credentials["tenant_id"]
+	if !ok {
+		return nil, errors.New("connection to Azure is invalid")
+	}
+
+	command, ok := request.Parameters[commandParameterName]
+	if !ok {
+		return nil, errors.New("command to Google Cloud CLI wasn't provided")
+	}
+
+	loginCmd := fmt.Sprintf("login --service-principal -u %s -p %s --tenant %s", appId, clientSecret, tenantId)
+	if output, err := executeCommand(environmentVariables{}, "/bin/az", strings.Split(loginCmd, " ")...); err != nil {
+		return getCommandFailureResponse(output, err)
+	}
+
+	output, err := executeCommand(environmentVariables{}, "/bin/az", strings.Split(command, " ")...)
+	if err != nil {
+		return getCommandFailureResponse(output, err)
+	}
+
+	return output, nil
+}
+
 func initKubernetesEnvironment(temporaryPath string, environment environmentVariables, bearerToken string, apiServerURL string, verifyCertificate bool) ([]byte, error) {
 	pathToKubeConfigDirectory := fmt.Sprintf("%s/.kube", temporaryPath)
 	pathToKubeConfig := fmt.Sprintf("%s/config", pathToKubeConfigDirectory)
