@@ -1,13 +1,9 @@
 # Describes the action and it's parameters
-name: "aws"
-description: "Executes Amazon Web Services (AWS) CLI command"
+name: "gcloud"
+description: "Executes Google Cloud (GCP) CLI command"
 enabled: true
 parameters:
   Command:
     type: "string"
-    description: "Command to pass to aws cli"
-    required: true
-  Region:
-    type: "string"
-    description: "Region for aws command"
+    description: "Command to pass to google cloud cli"
     required: true

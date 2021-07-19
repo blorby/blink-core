@@ -6,6 +6,7 @@ import (
 	"github.com/blinkops/blink-sdk/plugin"
 	uuid "github.com/satori/go.uuid"
 	log "github.com/sirupsen/logrus"
+	"os"
 	"strings"
 )
 
@@ -118,6 +119,54 @@ func executeCoreKubernetesAction(ctx *plugin.ActionContext, request *plugin.Exec
 	return output, nil
 }
 
+func executeCoreGoogleCloudAction(ctx *plugin.ActionContext, request *plugin.ExecuteActionRequest) ([]byte, error) {
+	credentials, err := ctx.GetCredentials("gcp")
+	if err != nil {
+		return nil, err
+	}
+
+	gcpCredentials, ok := credentials["credentials"]
+	if !ok {
+		return nil, errors.New("connection to GCP is invalid")
+	}
+
+	command, ok := request.Parameters[commandParameterName]
+	if !ok {
+		return nil, errors.New("command to Google Cloud CLI wasn't provided")
+	}
+
+	temporaryUUID := uuid.NewV4().String()
+	temporaryPath := fmt.Sprintf("/tmp/%s", temporaryUUID)
+	pathToConfigDirectory := fmt.Sprintf("%s/.gcp", temporaryPath)
+	pathToConfig := fmt.Sprintf("%s/config", pathToConfigDirectory)
+
+	if output, err := executeCommand(environmentVariables{}, "/bin/mkdir", "-p", pathToConfigDirectory); err != nil {
+		return getCommandFailureResponse(output, err)
+	}
+
+	defer func() {
+		// Delete kube config directory
+		if _, err := executeCommand(environmentVariables{}, "/bin/rm", "-r", temporaryPath); err != nil {
+			log.Errorf("failed to delete kube config credentials from temporary filesystem, error: %v", err)
+		}
+	}()
+
+	environment := environmentVariables{
+		fmt.Sprintf("CLOUDSDK_AUTH_CREDENTIAL_FILE_OVERRIDE=%s", pathToConfig),
+	}
+
+	if err := initGoogleCloudEnvironment(temporaryPath, fmt.Sprintf("%s", gcpCredentials)); err != nil {
+		return getCommandFailureResponse(nil, err)
+	}
+
+	output, err := executeCommand(environment, "/bin/gcloud", strings.Split(command, " ")...)
+	if err != nil {
+		return getCommandFailureResponse(output, err)
+	}
+
+	return output, nil
+}
+
 func initKubernetesEnvironment(temporaryPath string, environment environmentVariables, bearerToken string, apiServerURL string, verifyCertificate bool) ([]byte, error) {
 	pathToKubeConfigDirectory := fmt.Sprintf("%s/.kube", temporaryPath)
 	pathToKubeConfig := fmt.Sprintf("%s/config", pathToKubeConfigDirectory)
@@ -148,4 +197,11 @@ func initKubernetesEnvironment(temporaryPath string, environment environmentVari
 	}
 
 	return nil, nil
+}
+
+func initGoogleCloudEnvironment(temporaryPath string, credentials string) error {
+	pathToGCPConfigDirectory := fmt.Sprintf("%s/.gcp", temporaryPath)
+	pathToGCPConfig := fmt.Sprintf("%s/config", pathToGCPConfigDirectory)
+
+	return os.WriteFile(pathToGCPConfig, []byte(credentials), os.ModePerm)
 }
