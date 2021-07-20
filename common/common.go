@@ -1,4 +1,4 @@
-package implementation
+package common
 
 import (
 	"encoding/json"
@@ -6,17 +6,18 @@ import (
 	"os/exec"
 )
 
-func executeCommand(environment []string, directory string, name string, args ...string) ([]byte, error) {
+type CommandOutput struct {
+	Output string `json:"output"`
+	Error  string `json:"error"`
+}
+
+func ExecuteCommand(environment []string, name string, args ...string) ([]byte, error) {
 	command := exec.Command(
 		name,
 		args...)
 
 	if environment != nil {
 		command.Env = environment
-	}
-
-	if directory != "" {
-		command.Dir = directory
 	}
 
 	log.Infof("Executing %s", command.String())
@@ -29,7 +30,7 @@ func executeCommand(environment []string, directory string, name string, args ..
 	return outputBytes, execErr
 }
 
-func getCommandFailureResponse(output []byte, err error) ([]byte, error) {
+func GetCommandFailureResponse(output []byte, err error) ([]byte, error) {
 	failureResult := CommandOutput{Output: string(output), Error: err.Error()}
 
 	resultBytes, err := json.Marshal(failureResult)

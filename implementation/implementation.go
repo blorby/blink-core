@@ -11,11 +11,6 @@ import (
 	"path"
 )
 
-type CommandOutput struct {
-	Output string `json:"output"`
-	Error  string `json:"error"`
-}
-
 type ActionHandler func(ctx *plugin.ActionContext, request *plugin.ExecuteActionRequest) ([]byte, error)
 
 type CorePlugin struct {
@@ -88,15 +83,15 @@ func NewCorePlugin(rootPluginDirectory string) (*CorePlugin, error) {
 	}
 
 	supportedActions := map[string]ActionHandler{
-		"python":    executeCorePythonAction,
-		"bash":      executeCoreBashAction,
-		"jq":        executeCoreJQAction,
-		"jp":        executeCoreJPAction,
-		"http":      executeCoreHTTPAction,
-		"email":     executeCoreMailAction,
-		"aws":       executeCoreAWSAction,
-		"kubectl":   executeCoreKubernetesAction,
-		"git-clone": executeCoreGitCloneAction,
+		"python":     executeCorePythonAction,
+		"bash":       executeCoreBashAction,
+		"jq":         executeCoreJQAction,
+		"jp":         executeCoreJPAction,
+		"http":       executeCoreHTTPAction,
+		"email":      executeCoreMailAction,
+		"aws":        executeCoreAWSAction,
+		"kubectl":    executeCoreKubernetesAction,
+		"fetch_file": executeCoreFetchFileAction,
 	}
 
 	return &CorePlugin{

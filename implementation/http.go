@@ -160,7 +160,7 @@ func executeCoreHTTPAction(_ *plugin.ActionContext, request *plugin.ExecuteActio
 		return nil, errors.New("no method provided for execution")
 	}
 
-	url, ok := request.Parameters[urlKey]
+	url, ok := request.Parameters[UrlKey]
 	if !ok {
 		return nil, errors.New("no url provided for execution")
 	}

@@ -4,6 +4,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"errors"
+	"github.com/blinkops/blink-core/common"
 	"github.com/blinkops/blink-sdk/plugin"
 	"github.com/blinkops/blink-sdk/plugin/connections"
 	log "github.com/sirupsen/logrus"
@@ -31,7 +32,7 @@ func executeCorePythonAction(ctx *plugin.ActionContext, request *plugin.ExecuteA
 	}
 
 	base64EncodedBytes := base64.StdEncoding.EncodeToString(rawJsonBytes)
-	output, err := executeCommand(nil, "", "/bin/python", pythonRunnerPath, "--input", base64EncodedBytes)
+	output, err := common.ExecuteCommand(nil, "/bin/python", pythonRunnerPath, "--input", base64EncodedBytes)
 
 	resultJson := struct {
 		Context map[string]interface{} `json:"context"`
@@ -41,7 +42,7 @@ func executeCorePythonAction(ctx *plugin.ActionContext, request *plugin.ExecuteA
 	}{}
 
 	if err != nil {
-		output, err = getCommandFailureResponse(output, err)
+		output, err = common.GetCommandFailureResponse(output, err)
 		if err != nil {
 			return nil, err
 		}
@@ -58,7 +59,7 @@ func executeCorePythonAction(ctx *plugin.ActionContext, request *plugin.ExecuteA
 		return []byte(resultJson.Output), nil
 	}
 
-	result := CommandOutput{Output: resultJson.Output, Error: resultJson.Error}
+	result := common.CommandOutput{Output: resultJson.Output, Error: resultJson.Error}
 	finalJsonBytes, err := json.Marshal(result)
 	if err != nil {
 		return nil, err
