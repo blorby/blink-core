@@ -18,3 +18,13 @@ parameters:
     description: "The body of the mail, write up your mail to send as you wish"
     placeholder: "Enter the mail's body"
     required: true
+  attachment_name:
+    type: "string"
+    description: "The name of the attachment"
+    placeholder: "Enter the attachment name"
+    required: false
+  attachment_body:
+    type: "string"
+    description: "The body of the attachment"
+    placeholder: "Enter the attachment body"
+    required: false
