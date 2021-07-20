@@ -6,6 +6,7 @@ import (
 	"github.com/blinkops/blink-sdk/plugin"
 	log "github.com/sirupsen/logrus"
 	"os"
+	"path/filepath"
 	"strings"
 )
 
@@ -58,16 +59,14 @@ func GetFileUrl(request *plugin.ExecuteActionRequest) (string, error) {
 }
 
 func extractFilenameFromUrl(fileUrl string, paramDelimiter string) string {
-	var splitUrl []string
+	var fileName string
 
 	if paramDelimiter != "" {
-		splitUrl = strings.Split(fileUrl, paramDelimiter)
-		splitUrl = strings.Split(splitUrl[0], pathDelimiter)
+		splitUrl := strings.Split(fileUrl, paramDelimiter)
+		_, fileName = filepath.Split(splitUrl[0])
 	} else {
-		splitUrl = strings.Split(fileUrl, pathDelimiter)
+		_, fileName = filepath.Split(fileUrl)
 	}
-
-	fileName := splitUrl[len(splitUrl) - 1]
 
 	return fileName
 }
