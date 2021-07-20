@@ -51,7 +51,10 @@ func getCurrentDirectoryPath() string {
 		return "./"
 	}
 
-	return string(output)
+	currentPath := string(output)
+	currentPath = strings.TrimSuffix(currentPath, "\n")
+
+	return currentPath
 }
 
 func GetFileUrl(request *plugin.ExecuteActionRequest) (string, error) {
