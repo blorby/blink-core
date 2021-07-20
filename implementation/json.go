@@ -67,10 +67,7 @@ func executeCoreJPAction(_ *plugin.ActionContext, request *plugin.ExecuteActionR
 	output, err := common.ExecuteCommand(nil, "/bin/bash", "-c", cmd)
 
 	if err != nil {
-		output, err = common.GetCommandFailureResponse(output, err)
-		if err != nil {
-			return nil, err
-		}
+		return common.GetCommandFailureResponse(output, err)
 	}
 
 	return output, nil

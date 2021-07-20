@@ -5,13 +5,15 @@ import (
 	"github.com/blinkops/blink-core/common"
 	"github.com/blinkops/blink-sdk/plugin"
 	log "github.com/sirupsen/logrus"
+	"os"
 	"strings"
 )
 
 const (
 	fetchFileUrl         = "url"
 	fetchFileDestination = "destination"
-	pathDelimiter        = "/"
+	pathDelimiter        = string(os.PathSeparator)
+	currentDir           = "./"
 )
 
 func GetFileDestination(fileUrl string, request *plugin.ExecuteActionRequest, paramDelimiter string) (string, error) {
@@ -20,22 +22,13 @@ func GetFileDestination(fileUrl string, request *plugin.ExecuteActionRequest, pa
 	if !ok {
 		destination = getCurrentDirectoryPath()
 	} else {
-		_, err := common.ExecuteCommand(nil, "/bin/mkdir", "-p", destination)
-
-		if err != nil {
+		if _, err := common.ExecuteCommand(nil, "/bin/mkdir", "-p", destination); err != nil {
 			log.Debugf("Failed to create requested destination dir: %s", destination)
 			destination = getCurrentDirectoryPath()
 		}
 	}
 
-	splitUrl := strings.Split(fileUrl, pathDelimiter)
-	fileNameParams := splitUrl[len(splitUrl)-1]
-	fileName := fileNameParams
-
-	if paramDelimiter != "" {
-		splitFileName := strings.Split(fileNameParams, paramDelimiter)
-		fileName = splitFileName[0]
-	}
+	fileName := extractFilenameFromUrl(fileUrl, paramDelimiter)
 
 	if !strings.HasSuffix(destination, pathDelimiter) {
 		destination += pathDelimiter
@@ -45,14 +38,11 @@ func GetFileDestination(fileUrl string, request *plugin.ExecuteActionRequest, pa
 }
 
 func getCurrentDirectoryPath() string {
-	output, err := common.ExecuteCommand(nil, "pwd")
+	currentPath, err := os.Getwd()
 
 	if err != nil {
-		return "./"
+		return currentDir
 	}
-
-	currentPath := string(output)
-	currentPath = strings.TrimSuffix(currentPath, "\n")
 
 	return currentPath
 }
@@ -65,4 +55,19 @@ func GetFileUrl(request *plugin.ExecuteActionRequest) (string, error) {
 	}
 
 	return fileUrl, nil
+}
+
+func extractFilenameFromUrl(fileUrl string, paramDelimiter string) string {
+	var splitUrl []string
+
+	if paramDelimiter != "" {
+		splitUrl = strings.Split(fileUrl, paramDelimiter)
+		splitUrl = strings.Split(splitUrl[0], pathDelimiter)
+	} else {
+		splitUrl = strings.Split(fileUrl, pathDelimiter)
+	}
+
+	fileName := splitUrl[len(splitUrl) - 1]
+
+	return fileName
 }

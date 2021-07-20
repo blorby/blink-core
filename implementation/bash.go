@@ -92,10 +92,7 @@ func executeCoreBashAction(ctx *plugin.ActionContext, request *plugin.ExecuteAct
 	environmentVariables = append(environmentVariables, getConnectionsAsEnvVariables(ctx.GetAllConnections())...)
 	output, err := common.ExecuteCommand(environmentVariables, "/bin/bash", "-c", fmt.Sprintf("%s", code))
 	if err != nil {
-		output, err = common.GetCommandFailureResponse(output, err)
-		if err != nil {
-			return nil, err
-		}
+		return common.GetCommandFailureResponse(output, err)
 	}
 
 	return output, nil

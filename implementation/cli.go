@@ -46,10 +46,7 @@ func executeCoreAWSAction(ctx *plugin.ActionContext, request *plugin.ExecuteActi
 
 	output, err := common.ExecuteCommand(environmentVariables, "/bin/aws", strings.Split(command, " ")...)
 	if err != nil {
-		output, err = common.GetCommandFailureResponse(output, err)
-		if err != nil {
-			return nil, err
-		}
+		return common.GetCommandFailureResponse(output, err)
 	}
 
 	return output, nil

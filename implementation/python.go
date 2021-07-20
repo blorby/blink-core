@@ -42,10 +42,7 @@ func executeCorePythonAction(ctx *plugin.ActionContext, request *plugin.ExecuteA
 	}{}
 
 	if err != nil {
-		output, err = common.GetCommandFailureResponse(output, err)
-		if err != nil {
-			return nil, err
-		}
+		return common.GetCommandFailureResponse(output, err)
 	}
 
 	err = json.Unmarshal(output, &resultJson)
