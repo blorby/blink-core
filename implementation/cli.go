@@ -138,13 +138,13 @@ func executeCoreGoogleCloudAction(ctx *plugin.ActionContext, request *plugin.Exe
 	pathToConfigDirectory := fmt.Sprintf("%s/.gcp", temporaryPath)
 	pathToConfig := fmt.Sprintf("%s/config", pathToConfigDirectory)
 
-	if output, err := executeCommand(environmentVariables{}, "/bin/mkdir", "-p", pathToConfigDirectory); err != nil {
-		return getCommandFailureResponse(output, err)
+	if output, err := common.ExecuteCommand(environmentVariables{}, "/bin/mkdir", "-p", pathToConfigDirectory); err != nil {
+		return common.GetCommandFailureResponse(output, err)
 	}
 
 	defer func() {
 		// Delete kube config directory
-		if _, err := executeCommand(environmentVariables{}, "/bin/rm", "-r", temporaryPath); err != nil {
+		if _, err := common.ExecuteCommand(environmentVariables{}, "/bin/rm", "-r", temporaryPath); err != nil {
 			log.Errorf("failed to delete kube config credentials from temporary filesystem, error: %v", err)
 		}
 	}()
@@ -154,12 +154,12 @@ func executeCoreGoogleCloudAction(ctx *plugin.ActionContext, request *plugin.Exe
 	}
 
 	if err := initGoogleCloudEnvironment(temporaryPath, fmt.Sprintf("%s", gcpCredentials)); err != nil {
-		return getCommandFailureResponse(nil, err)
+		return common.GetCommandFailureResponse(nil, err)
 	}
 
-	output, err := executeCommand(environment, "/bin/gcloud", strings.Split(command, " ")...)
+	output, err := common.ExecuteCommand(environment, "/bin/gcloud", strings.Split(command, " ")...)
 	if err != nil {
-		return getCommandFailureResponse(output, err)
+		return common.GetCommandFailureResponse(output, err)
 	}
 
 	return output, nil
@@ -192,13 +192,13 @@ func executeCoreAzureAction(ctx *plugin.ActionContext, request *plugin.ExecuteAc
 	}
 
 	loginCmd := fmt.Sprintf("login --service-principal -u %s -p %s --tenant %s", appId, clientSecret, tenantId)
-	if output, err := executeCommand(environmentVariables{}, "/bin/az", strings.Split(loginCmd, " ")...); err != nil {
-		return getCommandFailureResponse(output, err)
+	if output, err := common.ExecuteCommand(environmentVariables{}, "/bin/az", strings.Split(loginCmd, " ")...); err != nil {
+		return common.GetCommandFailureResponse(output, err)
 	}
 
-	output, err := executeCommand(environmentVariables{}, "/bin/az", strings.Split(command, " ")...)
+	output, err := common.ExecuteCommand(environmentVariables{}, "/bin/az", strings.Split(command, " ")...)
 	if err != nil {
-		return getCommandFailureResponse(output, err)
+		return common.GetCommandFailureResponse(output, err)
 	}
 
 	return output, nil
