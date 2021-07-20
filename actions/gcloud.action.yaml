@@ -1,0 +1,9 @@
+# Describes the action and it's parameters
+name: "gcloud"
+description: "Executes Google Cloud (GCP) CLI command"
+enabled: true
+parameters:
+  Command:
+    type: "string"
+    description: "Command to pass to google cloud cli"
+    required: true
