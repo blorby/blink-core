@@ -11,10 +11,11 @@ import (
 )
 
 const (
-	fetchFileUrl         = "url"
-	fetchFileDestination = "destination"
-	pathDelimiter        = string(os.PathSeparator)
-	currentDir           = "./"
+	fetchFileUrl          = "url"
+	fetchFileDestination  = "destination"
+	pathDelimiter         = string(os.PathSeparator)
+	currentDir            = "./"
+	defaultParamDelimiter = "?"
 )
 
 func GetFileDestination(fileUrl string, request *plugin.ExecuteActionRequest, paramDelimiter string) (string, error) {
@@ -61,12 +62,12 @@ func GetFileUrl(request *plugin.ExecuteActionRequest) (string, error) {
 func extractFilenameFromUrl(fileUrl string, paramDelimiter string) string {
 	var fileName string
 
-	if paramDelimiter != "" {
-		splitUrl := strings.Split(fileUrl, paramDelimiter)
-		_, fileName = filepath.Split(splitUrl[0])
-	} else {
-		_, fileName = filepath.Split(fileUrl)
+	if paramDelimiter == "" {
+		paramDelimiter = defaultParamDelimiter
 	}
+
+	splitUrl := strings.Split(fileUrl, paramDelimiter)
+	_, fileName = filepath.Split(splitUrl[0])
 
 	return fileName
 }
