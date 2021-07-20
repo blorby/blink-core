@@ -11,11 +11,6 @@ import (
 	"path"
 )
 
-type CommandOutput struct {
-	Output string `json:"output"`
-	Error  string `json:"error"`
-}
-
 type ActionHandler func(ctx *plugin.ActionContext, request *plugin.ExecuteActionRequest) ([]byte, error)
 
 type CorePlugin struct {
@@ -98,6 +93,7 @@ func NewCorePlugin(rootPluginDirectory string) (*CorePlugin, error) {
 		"kubectl": executeCoreKubernetesAction,
 		"gcloud":  executeCoreGoogleCloudAction,
 		"az":      executeCoreAzureAction,
+		"fetch_file": executeCoreFetchFileAction,
 	}
 
 	return &CorePlugin{

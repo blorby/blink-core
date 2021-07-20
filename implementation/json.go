@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/blinkops/blink-core/common"
 	"github.com/blinkops/blink-sdk/plugin"
 	log "github.com/sirupsen/logrus"
 	"os/exec"
@@ -28,7 +29,7 @@ func executeCoreJQAction(_ *plugin.ActionContext, request *plugin.ExecuteActionR
 	if execErr != nil {
 		log.Error("Detected failure, building result! Error: ", execErr)
 
-		failureResult := CommandOutput{Output: string(outputBytes), Error: execErr.Error()}
+		failureResult := common.CommandOutput{Output: string(outputBytes), Error: execErr.Error()}
 
 		resultBytes, err := json.Marshal(failureResult)
 		if err != nil {
@@ -63,13 +64,10 @@ func executeCoreJPAction(_ *plugin.ActionContext, request *plugin.ExecuteActionR
 	}
 
 	cmd := fmt.Sprintf("/bin/echo '%s' | /bin/jp %s%s", providedJson, unquoted, query)
-	output, err := executeCommand(nil, "/bin/bash", "-c", cmd)
+	output, err := common.ExecuteCommand(nil, "/bin/bash", "-c", cmd)
 
 	if err != nil {
-		output, err = getCommandFailureResponse(output, err)
-		if err != nil {
-			return nil, err
-		}
+		return common.GetCommandFailureResponse(output, err)
 	}
 
 	return output, nil
