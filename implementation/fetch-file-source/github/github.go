@@ -41,7 +41,7 @@ func FetchFile(ctx *plugin.ActionContext, request *plugin.ExecuteActionRequest) 
 	}
 
 	tokenHeader := fmt.Sprintf(headerAuthorization, token)
-	output, err := common.ExecuteCommand(nil, "/usr/bin/curl", "-H", tokenHeader, "-o", destination, fileUrl)
+	output, err := common.ExecuteCommand(nil, "/bin/curl", "-H", tokenHeader, "-o", destination, fileUrl)
 
 	if err != nil {
 		return common.GetCommandFailureResponse(output, err)
