@@ -69,6 +69,8 @@ func extractFilenameFromUrl(fileUrl string, paramDelimiter string) string {
 		log.Infof("split url: %v", splitUrl)
 		dir, fileName = filepath.Split(splitUrl[0])
 		log.Infof("dir: %s, fileName: %s", dir, fileName)
+		reSplit := strings.Split(fileName, "?")
+		fileName = reSplit[0]
 	} else {
 		_, fileName = filepath.Split(fileUrl)
 	}
