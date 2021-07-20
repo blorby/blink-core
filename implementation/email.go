@@ -11,6 +11,19 @@ import (
 	"strings"
 )
 
+func addAttachmentIfNeeded(request *plugin.ExecuteActionRequest, message *gomail.Message)  {
+
+	attachmentName, nOk := request.Parameters["attachment_name"]
+	attachmentBody, bOk := request.Parameters["attachment_body"]
+
+	if !nOk || !bOk {
+		return
+	}
+
+	bodyReader := strings.NewReader(attachmentBody)
+	message.AttachReader(attachmentName, bodyReader)
+}
+
 func executeCoreMailAction(context *plugin.ActionContext, request *plugin.ExecuteActionRequest) ([]byte, error) {
 	mailCredentials, err := context.GetCredentials("core-mail")
 	if err != nil {
@@ -87,6 +100,8 @@ func executeCoreMailAction(context *plugin.ActionContext, request *plugin.Execut
 
 	// Set E-Mail body. You can set plain text or html with text/html
 	m.SetBody("text/plain", content)
+
+	addAttachmentIfNeeded(request, m)
 
 	// Settings for SMTP server
 	d := gomail.NewDialer(smtpHost.(string), port, fromEmail.(string), password.(string))
