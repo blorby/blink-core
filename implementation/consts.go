@@ -17,4 +17,5 @@ const (
 	mailContentKey = "content"
 
 	pythonRunnerPath = "python/runner.py"
+	nodejsRunnerPath = "nodejs/runner.js"
 )

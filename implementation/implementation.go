@@ -92,6 +92,7 @@ func NewCorePlugin(rootPluginDirectory string) (*CorePlugin, error) {
 		"aws":        executeCoreAWSAction,
 		"kubectl":    executeCoreKubernetesAction,
 		"fetch_file": executeCoreFetchFileAction,
+		"nodejs":     executeCoreNodejsAction,
 	}
 
 	return &CorePlugin{

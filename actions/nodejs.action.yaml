@@ -1,0 +1,9 @@
+# Describes the action and it's parameters
+name: "nodejs"
+description: "Executes user provided js code"
+enabled: true
+parameters:
+  code:
+    type: "code:js"
+    description: "The actual code"
+    required: true
