@@ -33,7 +33,7 @@ func executeCoreNodejsAction(ctx *plugin.ActionContext, request *plugin.ExecuteA
 	}
 
 	base64EncodedBytes := base64.StdEncoding.EncodeToString(rawJsonBytes)
-	output, err := common.ExecuteCommand(nil, "/usr/local/bin/node", nodejsRunnerPath, "--input", base64EncodedBytes)
+	output, err := common.ExecuteCommand(nil, "/usr/bin/node", nodejsRunnerPath, "--input", base64EncodedBytes)
 
 	resultJson := struct {
 		Context map[string]interface{} `json:"context"`
