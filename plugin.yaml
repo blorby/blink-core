@@ -14,3 +14,7 @@ connection_types:
     reference: aws
   kubernetes:
     reference: kubernetes
+  gcp:
+    reference: gcp
+  azure:
+    refernece: azure
