@@ -94,6 +94,7 @@ func NewCorePlugin(rootPluginDirectory string) (*CorePlugin, error) {
 		"gcloud":  executeCoreGoogleCloudAction,
 		"az":      executeCoreAzureAction,
 		"fetch_file": executeCoreFetchFileAction,
+		"nodejs":     executeCoreNodejsAction,
 	}
 
 	return &CorePlugin{
