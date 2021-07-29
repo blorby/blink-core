@@ -8,6 +8,8 @@ github.com/beorn7/perks v0.0.0-20180321164747-3a771d992973/go.mod h1:Dwedo/Wpr24
 github.com/bgentry/speakeasy v0.1.0/go.mod h1:+zsyZBPWlz7T6j88CTgSN5bM796AkVf0kBD4zp0CCIs=
 github.com/blinkops/blink-sdk v1.0.45 h1:5AEpJJE2nZfkLVcQ6171GO3JUZ4KttxrYjql0hr1B1g=
 github.com/blinkops/blink-sdk v1.0.45/go.mod h1:yS6YUgzCNihkLPfyZnznAmo1jjIP93hPDuVpKhpYGZw=
+github.com/blinkops/blink-sdk v1.0.47 h1:F3BKVHdcH4ihhGnTc5MayxwckXMYYhIDz573+sGivYg=
+github.com/blinkops/blink-sdk v1.0.47/go.mod h1:yS6YUgzCNihkLPfyZnznAmo1jjIP93hPDuVpKhpYGZw=
 github.com/census-instrumentation/opencensus-proto v0.2.1/go.mod h1:f6KPmirojxKA12rnyqOA5BBL4O983OfeGPqjHWSTneU=
 github.com/circonus-labs/circonus-gometrics v2.3.1+incompatible/go.mod h1:nmEj6Dob7S7YxXgwXpfOuvO54S+tGdZdw9fuRZt25Ag=
 github.com/circonus-labs/circonusllhist v0.1.3/go.mod h1:kMXHVDlOchFAehlya5ePtbp5jckzBHf4XRpQvBOLI+I=
