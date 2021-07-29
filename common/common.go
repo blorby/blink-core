@@ -3,6 +3,7 @@ package common
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"github.com/blinkops/blink-sdk/plugin"
 	log "github.com/sirupsen/logrus"
 	"os/exec"
@@ -42,7 +43,7 @@ func ExecuteCommand(request *plugin.ExecuteActionRequest, environment []string, 
 	// happens when a process is killed.
 	if ctx.Err() == context.DeadlineExceeded {
 		log.Error("Command timed out")
-		return nil, ctx.Err()
+		return nil, errors.New("command timed out")
 	}
 
 	if execErr != nil {
