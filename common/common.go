@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"github.com/blinkops/blink-sdk/plugin"
 	log "github.com/sirupsen/logrus"
 	"os/exec"
@@ -20,7 +21,7 @@ func ExecuteCommand(request *plugin.ExecuteActionRequest, environment []string, 
 
 	if request != nil && request.Timeout != 0 {
 		// Create a new context and add a timeout to it
-		tctx, cancel := context.WithTimeout(ctx, time.Duration(request.Timeout) * time.Second)
+		tctx, cancel := context.WithTimeout(ctx, time.Duration(request.Timeout)*time.Second)
 		ctx = tctx
 		defer cancel()
 	}
@@ -42,8 +43,9 @@ func ExecuteCommand(request *plugin.ExecuteActionRequest, environment []string, 
 	// The error returned by cmd.Output() will be OS specific based on what
 	// happens when a process is killed.
 	if ctx.Err() == context.DeadlineExceeded {
-		log.Error("Command timed out")
-		return nil, errors.New("command timed out")
+		timeoutError := errors.New(fmt.Sprintf("command timed out: %s", command))
+		log.Error(timeoutError)
+		return nil, timeoutError
 	}
 
 	if execErr != nil {
