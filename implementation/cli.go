@@ -45,7 +45,7 @@ func executeCoreAWSAction(ctx *plugin.ActionContext, request *plugin.ExecuteActi
 
 	environmentVariables = append(environmentVariables, fmt.Sprintf("%s=%v", regionEnvironmentVariable, region))
 
-	output, err := common.ExecuteCommand(environmentVariables, "/bin/aws", strings.Split(command, " ")...)
+	output, err := common.ExecuteCommand(request, environmentVariables, "/bin/aws", strings.Split(command, " ")...)
 	if err != nil {
 		return common.GetCommandFailureResponse(output, err)
 	}
@@ -84,13 +84,13 @@ func executeCoreKubernetesAction(ctx *plugin.ActionContext, request *plugin.Exec
 	pathToKubeConfigDirectory := fmt.Sprintf("%s/.kube", temporaryPath)
 	pathToKubeConfig := fmt.Sprintf("%s/config", pathToKubeConfigDirectory)
 
-	if output, err := common.ExecuteCommand(environmentVariables{}, "/bin/mkdir", "-p", pathToKubeConfigDirectory); err != nil {
+	if output, err := common.ExecuteCommand(nil, nil, "/bin/mkdir", "-p", pathToKubeConfigDirectory); err != nil {
 		return common.GetCommandFailureResponse(output, err)
 	}
 
 	defer func() {
 		// Delete kube config directory
-		if _, err := common.ExecuteCommand(environmentVariables{}, "/bin/rm", "-r", temporaryPath); err != nil {
+		if _, err := common.ExecuteCommand(nil, nil, "/bin/rm", "-r", temporaryPath); err != nil {
 			log.Errorf("failed to delete kube config credentials from temporary filesystem, error: %v", err)
 		}
 	}()
@@ -109,7 +109,7 @@ func executeCoreKubernetesAction(ctx *plugin.ActionContext, request *plugin.Exec
 	}
 
 	command = fmt.Sprintf("--user %s --cluster %s %s", kubernetesUsername, kubernetesCluster, command)
-	output, err := common.ExecuteCommand(environment, "/bin/kubectl", strings.Split(command, " ")...)
+	output, err := common.ExecuteCommand(request, environment, "/bin/kubectl", strings.Split(command, " ")...)
 	if err != nil {
 		return common.GetCommandFailureResponse(output, err)
 	}
@@ -138,13 +138,13 @@ func executeCoreGoogleCloudAction(ctx *plugin.ActionContext, request *plugin.Exe
 	pathToConfigDirectory := fmt.Sprintf("%s/.gcp", temporaryPath)
 	pathToConfig := fmt.Sprintf("%s/config", pathToConfigDirectory)
 
-	if output, err := common.ExecuteCommand(environmentVariables{}, "/bin/mkdir", "-p", pathToConfigDirectory); err != nil {
+	if output, err := common.ExecuteCommand(nil, nil, "/bin/mkdir", "-p", pathToConfigDirectory); err != nil {
 		return common.GetCommandFailureResponse(output, err)
 	}
 
 	defer func() {
 		// Delete kube config directory
-		if _, err := common.ExecuteCommand(environmentVariables{}, "/bin/rm", "-r", temporaryPath); err != nil {
+		if _, err := common.ExecuteCommand(nil, nil, "/bin/rm", "-r", temporaryPath); err != nil {
 			log.Errorf("failed to delete kube config credentials from temporary filesystem, error: %v", err)
 		}
 	}()
@@ -157,7 +157,7 @@ func executeCoreGoogleCloudAction(ctx *plugin.ActionContext, request *plugin.Exe
 		return common.GetCommandFailureResponse(nil, err)
 	}
 
-	output, err := common.ExecuteCommand(environment, "/bin/gcloud", strings.Split(command, " ")...)
+	output, err := common.ExecuteCommand(request, environment, "/bin/gcloud", strings.Split(command, " ")...)
 	if err != nil {
 		return common.GetCommandFailureResponse(output, err)
 	}
@@ -192,11 +192,11 @@ func executeCoreAzureAction(ctx *plugin.ActionContext, request *plugin.ExecuteAc
 	}
 
 	loginCmd := fmt.Sprintf("login --service-principal -u %s -p %s --tenant %s", appId, clientSecret, tenantId)
-	if output, err := common.ExecuteCommand(environmentVariables{}, "/bin/az", strings.Split(loginCmd, " ")...); err != nil {
+	if output, err := common.ExecuteCommand(request, environmentVariables{}, "/bin/az", strings.Split(loginCmd, " ")...); err != nil {
 		return common.GetCommandFailureResponse(output, err)
 	}
 
-	output, err := common.ExecuteCommand(environmentVariables{}, "/bin/az", strings.Split(command, " ")...)
+	output, err := common.ExecuteCommand(request, environmentVariables{}, "/bin/az", strings.Split(command, " ")...)
 	if err != nil {
 		return common.GetCommandFailureResponse(output, err)
 	}
@@ -209,7 +209,7 @@ func initKubernetesEnvironment(temporaryPath string, environment environmentVari
 	pathToKubeConfig := fmt.Sprintf("%s/config", pathToKubeConfigDirectory)
 
 	cmd := "$(/bin/kubectl config view --merge --flatten)"
-	output, err := common.ExecuteCommand(environmentVariables{}, "/bin/echo", cmd, ">", pathToKubeConfig)
+	output, err := common.ExecuteCommand(nil, nil, "/bin/echo", cmd, ">", pathToKubeConfig)
 	if err != nil {
 		return output, err
 	}
@@ -217,18 +217,18 @@ func initKubernetesEnvironment(temporaryPath string, environment environmentVari
 	clusterBaseCmd := fmt.Sprintf("config set-cluster cluster")
 	cmd = fmt.Sprintf("%s --server=%s", clusterBaseCmd, apiServerURL)
 
-	if output, err := common.ExecuteCommand(environment, "/bin/kubectl", strings.Split(cmd, " ")...); err != nil {
+	if output, err := common.ExecuteCommand(nil, nil, "/bin/kubectl", strings.Split(cmd, " ")...); err != nil {
 		return output, err
 	}
 
 	if !verifyCertificate {
 		cmd := fmt.Sprintf("%s --insecure-skip-tls-verify=true", clusterBaseCmd)
-		if output, err = common.ExecuteCommand(environment, "/bin/kubectl", strings.Split(cmd, " ")...); err != nil {
+		if output, err = common.ExecuteCommand(nil, nil, "/bin/kubectl", strings.Split(cmd, " ")...); err != nil {
 			return output, err
 		}
 	}
 
-	output, err = common.ExecuteCommand(environment, "/bin/kubectl", "config", "set-credentials", "user", fmt.Sprintf("--token=%s", bearerToken))
+	output, err = common.ExecuteCommand(nil, nil, "/bin/kubectl", "config", "set-credentials", "user", fmt.Sprintf("--token=%s", bearerToken))
 	if err != nil {
 		return output, err
 	}
