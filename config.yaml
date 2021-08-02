@@ -3,5 +3,6 @@ plugin:
   plugin_description_file_path: "plugin.yaml"
   actions_folder_path: "actions"
   provider_configuration_path: "provider_config.yaml"
+  type: "private"
 server:
   port: "1337"
