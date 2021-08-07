@@ -8,6 +8,7 @@ import (
 	"github.com/blinkops/blink-sdk/plugin"
 	"github.com/blinkops/blink-sdk/plugin/connections"
 	log "github.com/sirupsen/logrus"
+	"os"
 	"strings"
 )
 
@@ -90,6 +91,7 @@ func executeCoreBashAction(ctx *plugin.ActionContext, request *plugin.ExecuteAct
 
 	environmentVariables := getEnvVarsFromContext(ctx)
 	environmentVariables = append(environmentVariables, getConnectionsAsEnvVariables(ctx.GetAllConnections())...)
+	environmentVariables = append(environmentVariables, os.Environ()...)
 	output, err := common.ExecuteCommand(request, environmentVariables, "/bin/bash", "-c", fmt.Sprintf("%s", code))
 	if err != nil {
 		return common.GetCommandFailureResponse(output, err)
