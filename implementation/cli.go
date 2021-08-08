@@ -38,14 +38,14 @@ func executeCoreAWSAction(ctx *plugin.ActionContext, request *plugin.ExecuteActi
 		return nil, errors.New("command to AWS CLI wasn't provided")
 	}
 
-	var environmentVariables []string
+	var environment environmentVariables
 	for key, value := range credentials {
-		environmentVariables = append(environmentVariables, fmt.Sprintf("%s=%v", strings.ToUpper(key), value))
+		environment = append(environment, fmt.Sprintf("%s=%v", strings.ToUpper(key), value))
 	}
 
-	environmentVariables = append(environmentVariables, fmt.Sprintf("%s=%v", regionEnvironmentVariable, region))
+	environment = append(environment, fmt.Sprintf("%s=%v", regionEnvironmentVariable, region))
 
-	output, err := common.ExecuteCommand(request, environmentVariables, "/bin/aws", strings.Split(command, " ")...)
+	output, err := common.ExecuteCommand(request, environment, "/bin/aws", strings.Split(command, " ")...)
 	if err != nil {
 		return common.GetCommandFailureResponse(output, err)
 	}
@@ -217,18 +217,18 @@ func initKubernetesEnvironment(temporaryPath string, environment environmentVari
 	clusterBaseCmd := fmt.Sprintf("config set-cluster cluster")
 	cmd = fmt.Sprintf("%s --server=%s", clusterBaseCmd, apiServerURL)
 
-	if output, err := common.ExecuteCommand(nil, nil, "/bin/kubectl", strings.Split(cmd, " ")...); err != nil {
+	if output, err := common.ExecuteCommand(nil, environment, "/bin/kubectl", strings.Split(cmd, " ")...); err != nil {
 		return output, err
 	}
 
 	if !verifyCertificate {
 		cmd := fmt.Sprintf("%s --insecure-skip-tls-verify=true", clusterBaseCmd)
-		if output, err = common.ExecuteCommand(nil, nil, "/bin/kubectl", strings.Split(cmd, " ")...); err != nil {
+		if output, err = common.ExecuteCommand(nil, environment, "/bin/kubectl", strings.Split(cmd, " ")...); err != nil {
 			return output, err
 		}
 	}
 
-	output, err = common.ExecuteCommand(nil, nil, "/bin/kubectl", "config", "set-credentials", "user", fmt.Sprintf("--token=%s", bearerToken))
+	output, err = common.ExecuteCommand(nil, environment, "/bin/kubectl", "config", "set-credentials", "user", fmt.Sprintf("--token=%s", bearerToken))
 	if err != nil {
 		return output, err
 	}

@@ -28,8 +28,9 @@ RUN apt-get update && \
     apt-get install -y jq jp unzip && \
     # Downloading python3 & pip
     apt-get install -y python3 python3-apt python3-dev python3-distutils python3-venv && \
-    # Downloading nodejs
+    # Downloading nodejs & npm
     apt-get install -y nodejs && \
+    apt-get install -y npm && \
     ln /usr/bin/python3 /usr/bin/python && \
     curl https://bootstrap.pypa.io/get-pip.py | python && \
     pip install -r requirements.txt && \
@@ -55,8 +56,8 @@ RUN apt-get update && \
     tee -a /etc/apt/sources.list.d/google-cloud-sdk.list && \
     curl https://packages.cloud.google.com/apt/doc/apt-key.gpg | \
     apt-key --keyring /usr/share/keyrings/cloud.google.gpg  add - && \
-    apt-get update -y && apt-get install -y google-cloud-sdk && \
-    apt-get install -y npm
+    apt-get update -y && \
+    apt-get install -y google-cloud-sdk
 
 
 # Expose the gRPC port.
