@@ -12,15 +12,12 @@ FROM base AS builder
 # Install the package
 RUN go install -v ./...
 
+
+###########################################
 #  ubuntu 20.04
 FROM ubuntu:focal-20210416 AS plugin
 
 WORKDIR /blink-core
-COPY --from=builder /go/bin/blink-core .
-COPY config.yaml plugin.yaml python/requirements.txt ./
-COPY python python/
-COPY actions actions/
-COPY nodejs nodejs/
 
 RUN apt-get update && \
     apt-get install -y --no-install-recommends ca-certificates curl apt-transport-https lsb-release gnupg && \
@@ -65,6 +62,12 @@ RUN echo "deb [signed-by=/usr/share/keyrings/cloud.google.gpg] http://packages.c
     apt-key --keyring /usr/share/keyrings/cloud.google.gpg  add - && \
     apt-get update -y && apt-get install -y --no-install-recommends google-cloud-sdk && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
+
+COPY --from=builder /go/bin/blink-core .
+COPY config.yaml plugin.yaml python/requirements.txt ./
+COPY python python/
+COPY actions actions/
+COPY nodejs nodejs/
 
 
 # Expose the gRPC port.
