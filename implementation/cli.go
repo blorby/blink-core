@@ -7,6 +7,7 @@ import (
 	"github.com/blinkops/blink-sdk/plugin"
 	uuid "github.com/satori/go.uuid"
 	log "github.com/sirupsen/logrus"
+	"io/ioutil"
 	"os"
 	"strings"
 )
@@ -16,6 +17,7 @@ type environmentVariables []string
 const (
 	regionParameterName       = "Region"
 	commandParameterName      = "Command"
+	fileParameterName         = "file"
 	regionEnvironmentVariable = "AWS_DEFAULT_REGION"
 
 	kubernetesUsername = "user"
@@ -115,6 +117,40 @@ func executeCoreKubernetesAction(ctx *plugin.ActionContext, request *plugin.Exec
 	}
 
 	return output, nil
+}
+
+func executeCoreKubernetesApplyAction(ctx *plugin.ActionContext, request *plugin.ExecuteActionRequest) ([]byte, error) {
+	_, err := ctx.GetCredentials("kubernetes")
+	if err != nil {
+		return nil, err
+	}
+
+	applyFileContents, ok := request.Parameters[fileParameterName]
+	if !ok {
+		return nil, errors.New("the file is missing from action parameters")
+	}
+
+	if len(applyFileContents) == 0 {
+		return nil, errors.New("can't run apply action with empty file")
+	}
+
+	temporaryUUID := uuid.NewV4().String()
+	temporaryPath := fmt.Sprintf("/tmp/kubectl-apply-%s", temporaryUUID)
+
+	err = ioutil.WriteFile(temporaryUUID, []byte(applyFileContents), 0664)
+	if err != nil {
+		return nil, errors.New("failed creating the apply file")
+	}
+
+	defer func() {
+		err = os.Remove(temporaryPath)
+		if err != nil {
+			log.Errorf("Failed to remvoe kubectl apply file with error %v", err)
+		}
+	}()
+
+	request.Parameters[commandParameterName] = fmt.Sprintf("apply -f %s", temporaryPath)
+	return executeCoreKubernetesAction(ctx, request)
 }
 
 func executeCoreGoogleCloudAction(ctx *plugin.ActionContext, request *plugin.ExecuteActionRequest) ([]byte, error) {
