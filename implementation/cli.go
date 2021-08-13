@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/blinkops/blink-core/common"
 	"github.com/blinkops/blink-sdk/plugin"
+	errors2 "github.com/pkg/errors"
 	uuid "github.com/satori/go.uuid"
 	log "github.com/sirupsen/logrus"
 	"io/ioutil"
@@ -139,7 +140,7 @@ func executeCoreKubernetesApplyAction(ctx *plugin.ActionContext, request *plugin
 
 	err = ioutil.WriteFile(temporaryUUID, []byte(applyFileContents), 0664)
 	if err != nil {
-		return nil, errors.New("failed creating the apply file")
+		return nil, errors2.Wrap(err, "failed creating the apply file")
 	}
 
 	defer func() {
