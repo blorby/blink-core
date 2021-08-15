@@ -108,8 +108,7 @@ func executeCoreKubernetesAction(ctx *plugin.ActionContext, request *plugin.Exec
 		return common.GetCommandFailureResponse(output, err)
 	}
 
-	command = fmt.Sprintf("--user %s --cluster %s %s", kubernetesUsername, kubernetesCluster, command)
-	output, err := common.ExecuteCommand(request, environment, "/bin/kubectl", strings.Split(command, " ")...)
+	output, err := common.ExecuteBash(request, environment, command)
 	if err != nil {
 		return common.GetCommandFailureResponse(output, err)
 	}
@@ -157,7 +156,7 @@ func executeCoreGoogleCloudAction(ctx *plugin.ActionContext, request *plugin.Exe
 		return common.GetCommandFailureResponse(nil, err)
 	}
 
-	output, err := common.ExecuteCommand(request, environment, "/bin/gcloud", strings.Split(command, " ")...)
+	output, err := common.ExecuteCommand(request, environment, "/bin/bash", "-c", command)
 	if err != nil {
 		return common.GetCommandFailureResponse(output, err)
 	}
@@ -196,7 +195,7 @@ func executeCoreAzureAction(ctx *plugin.ActionContext, request *plugin.ExecuteAc
 		return common.GetCommandFailureResponse(output, err)
 	}
 
-	output, err := common.ExecuteCommand(request, environmentVariables{}, "/bin/az", strings.Split(command, " ")...)
+	output, err := common.ExecuteCommand(request, environmentVariables{}, "/bin/bash", "-c", command)
 	if err != nil {
 		return common.GetCommandFailureResponse(output, err)
 	}
@@ -205,30 +204,29 @@ func executeCoreAzureAction(ctx *plugin.ActionContext, request *plugin.ExecuteAc
 }
 
 func initKubernetesEnvironment(temporaryPath string, environment environmentVariables, bearerToken string, apiServerURL string, verifyCertificate bool) ([]byte, error) {
-	pathToKubeConfigDirectory := fmt.Sprintf("%s/.kube", temporaryPath)
-	pathToKubeConfig := fmt.Sprintf("%s/config", pathToKubeConfigDirectory)
 
-	cmd := "$(/bin/kubectl config view --merge --flatten)"
-	output, err := common.ExecuteCommand(nil, nil, "/bin/echo", cmd, ">", pathToKubeConfig)
+	cmd := fmt.Sprintf("kubectl config set-cluster cluster --server=%s", apiServerURL)
+	if !verifyCertificate {
+		cmd = fmt.Sprintf("%s --insecure-skip-tls-verify=true", cmd)
+	}
+	if output, err := common.ExecuteBash(nil, environment, cmd); err != nil {
+		return output, err
+	}
+
+	cmd = fmt.Sprintf("kubectl config set-credentials user --token=%s", bearerToken)
+	output, err := common.ExecuteBash(nil, environment, cmd)
 	if err != nil {
 		return output, err
 	}
 
-	clusterBaseCmd := fmt.Sprintf("config set-cluster cluster")
-	cmd = fmt.Sprintf("%s --server=%s", clusterBaseCmd, apiServerURL)
-
-	if output, err := common.ExecuteCommand(nil, environment, "/bin/kubectl", strings.Split(cmd, " ")...); err != nil {
+	cmd = fmt.Sprintf("kubectl config set-context ctx --cluster=cluster --user=user")
+	output, err = common.ExecuteBash(nil, environment, cmd)
+	if err != nil {
 		return output, err
 	}
 
-	if !verifyCertificate {
-		cmd := fmt.Sprintf("%s --insecure-skip-tls-verify=true", clusterBaseCmd)
-		if output, err = common.ExecuteCommand(nil, environment, "/bin/kubectl", strings.Split(cmd, " ")...); err != nil {
-			return output, err
-		}
-	}
-
-	output, err = common.ExecuteCommand(nil, environment, "/bin/kubectl", "config", "set-credentials", "user", fmt.Sprintf("--token=%s", bearerToken))
+	cmd = fmt.Sprintf("kubectl config use-context ctx")
+	output, err = common.ExecuteBash(nil, environment, cmd)
 	if err != nil {
 		return output, err
 	}
