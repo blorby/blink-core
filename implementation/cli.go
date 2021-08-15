@@ -45,7 +45,7 @@ func executeCoreAWSAction(ctx *plugin.ActionContext, request *plugin.ExecuteActi
 
 	environment = append(environment, fmt.Sprintf("%s=%v", regionEnvironmentVariable, region))
 
-	output, err := common.ExecuteCommand(request, environment, "/bin/aws", strings.Split(command, " ")...)
+	output, err := common.ExecuteCommandPipeline(request, environment, "/bin/aws", command)
 	if err != nil {
 		return common.GetCommandFailureResponse(output, err)
 	}
@@ -109,7 +109,7 @@ func executeCoreKubernetesAction(ctx *plugin.ActionContext, request *plugin.Exec
 	}
 
 	command = fmt.Sprintf("--user %s --cluster %s %s", kubernetesUsername, kubernetesCluster, command)
-	output, err := common.ExecuteCommand(request, environment, "/bin/kubectl", strings.Split(command, " ")...)
+	output, err := common.ExecuteCommandPipeline(request, environment, "/bin/kubectl", command)
 	if err != nil {
 		return common.GetCommandFailureResponse(output, err)
 	}
@@ -157,7 +157,7 @@ func executeCoreGoogleCloudAction(ctx *plugin.ActionContext, request *plugin.Exe
 		return common.GetCommandFailureResponse(nil, err)
 	}
 
-	output, err := common.ExecuteCommand(request, environment, "/bin/gcloud", strings.Split(command, " ")...)
+	output, err := common.ExecuteCommandPipeline(request, environment, "/bin/gcloud", command)
 	if err != nil {
 		return common.GetCommandFailureResponse(output, err)
 	}
@@ -196,7 +196,7 @@ func executeCoreAzureAction(ctx *plugin.ActionContext, request *plugin.ExecuteAc
 		return common.GetCommandFailureResponse(output, err)
 	}
 
-	output, err := common.ExecuteCommand(request, environmentVariables{}, "/bin/az", strings.Split(command, " ")...)
+	output, err := common.ExecuteCommandPipeline(request, environmentVariables{}, "/bin/az", command)
 	if err != nil {
 		return common.GetCommandFailureResponse(output, err)
 	}
