@@ -16,6 +16,10 @@ type CommandOutput struct {
 	Error  string `json:"error"`
 }
 
+func ExecuteBash(request *plugin.ExecuteActionRequest, environment []string, cmd string) ([]byte, error) {
+	return ExecuteCommand(request, environment, "/bin/bash", "-c", cmd)
+}
+
 func ExecuteCommand(request *plugin.ExecuteActionRequest, environment []string, name string, args ...string) ([]byte, error) {
 	ctx := context.Background()
 
