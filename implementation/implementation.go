@@ -83,17 +83,18 @@ func NewCorePlugin(rootPluginDirectory string) (*CorePlugin, error) {
 	}
 
 	supportedActions := map[string]ActionHandler{
-		"python":  executeCorePythonAction,
-		"bash":    executeCoreBashAction,
-		"jq":      executeCoreJQAction,
-		"jp":      executeCoreJPAction,
-		"email":   executeCoreMailAction,
-		"aws":     executeCoreAWSAction,
-		"kubectl": executeCoreKubernetesAction,
-		"gcloud":  executeCoreGoogleCloudAction,
-		"az":      executeCoreAzureAction,
-		"fetch_file": executeCoreFetchFileAction,
-		"nodejs":     executeCoreNodejsAction,
+		"python":        executeCorePythonAction,
+		"bash":          executeCoreBashAction,
+		"jq":            executeCoreJQAction,
+		"jp":            executeCoreJPAction,
+		"email":         executeCoreMailAction,
+		"aws":           executeCoreAWSAction,
+		"kubectl":       executeCoreKubernetesAction,
+		"kubectl_apply": executeCoreKubernetesApplyAction,
+		"gcloud":        executeCoreGoogleCloudAction,
+		"az":            executeCoreAzureAction,
+		"fetch_file":    executeCoreFetchFileAction,
+		"nodejs":        executeCoreNodejsAction,
 	}
 
 	return &CorePlugin{

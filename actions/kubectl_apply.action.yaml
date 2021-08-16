@@ -1,0 +1,8 @@
+name: "kubectl_apply"
+description: "Executes Kubernetes CLI (kubectl) apply command"
+enabled: true
+parameters:
+  file:
+    type: "code:yaml"
+    description: "The yaml content to apply"
+    required: true
