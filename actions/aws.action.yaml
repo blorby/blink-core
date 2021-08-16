@@ -4,8 +4,8 @@ description: "Executes Amazon Web Services (AWS) CLI command"
 enabled: true
 parameters:
   Command:
-    type: "string"
-    description: "Command to pass to aws cli"
+    type: "code:bash"
+    description: "aws command or a script containing aws command"
     required: true
   Region:
     type: "string"

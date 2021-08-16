@@ -4,6 +4,6 @@ description: "Executes Kubernetes CLI (kubectl) command"
 enabled: true
 parameters:
   Command:
-    type: "string"
-    description: "Command to pass to kubectl"
+    type: "code:bash"
+    description: "kubectl command or a script containing kubectl command"
     required: true

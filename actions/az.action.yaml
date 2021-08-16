@@ -4,6 +4,6 @@ description: "Executes Azure CLI command"
 enabled: true
 parameters:
   Command:
-    type: "string"
-    description: "Command to pass to azure cli"
+    type: "code:bash"
+    description: "az command or a script containing az command"
     required: true
