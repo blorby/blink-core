@@ -11,7 +11,7 @@ import (
 	"strings"
 )
 
-func addAttachmentIfNeeded(request *plugin.ExecuteActionRequest, message *gomail.Message)  {
+func addAttachmentIfNeeded(request *plugin.ExecuteActionRequest, message *gomail.Message) {
 
 	attachmentName, nOk := request.Parameters["attachment_name"]
 	attachmentBody, bOk := request.Parameters["attachment_body"]
@@ -87,10 +87,16 @@ func executeCoreMailAction(context *plugin.ActionContext, request *plugin.Execut
 		return nil, errors.New("no content provided for execution")
 	}
 
+	fromEmailString := fromEmail.(string)
+	fromEmailDomain := fromEmailString
+	if strings.Contains(fromEmailDomain, "@") && strings.Contains(fromEmailDomain, ".") {
+		fromEmailDomain = strings.Split(strings.Split(fromEmailDomain, "@")[1], ".")[0]
+	}
+
 	m := gomail.NewMessage()
 
 	// Set E-Mail sender
-	m.SetHeader("From", fromEmail.(string))
+	m.SetHeader("From", fmt.Sprintf("%s <%v>", fromEmailDomain, fromEmail))
 
 	// Set E-Mail receivers
 	m.SetHeader("To", receivers...)
@@ -99,7 +105,7 @@ func executeCoreMailAction(context *plugin.ActionContext, request *plugin.Execut
 	m.SetHeader("Subject", subject)
 
 	// Set E-Mail body. You can set plain text or html with text/html
-	m.SetBody("text/plain", content)
+	m.SetBody("text/html", content)
 
 	addAttachmentIfNeeded(request, m)
 
