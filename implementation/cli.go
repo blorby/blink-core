@@ -20,9 +20,6 @@ const (
 	commandParameterName      = "Command"
 	fileParameterName         = "file"
 	regionEnvironmentVariable = "AWS_DEFAULT_REGION"
-
-	kubernetesUsername = "user"
-	kubernetesCluster  = "cluster"
 )
 
 func executeCoreAWSAction(ctx *plugin.ActionContext, request *plugin.ExecuteActionRequest) ([]byte, error) {
@@ -47,6 +44,30 @@ func executeCoreAWSAction(ctx *plugin.ActionContext, request *plugin.ExecuteActi
 	}
 
 	environment = append(environment, fmt.Sprintf("%s=%v", regionEnvironmentVariable, region))
+
+	output, err := common.ExecuteCommand(request, environment, "/bin/bash", "-c", command)
+	if err != nil {
+		return common.GetCommandFailureResponse(output, err)
+	}
+
+	return output, nil
+}
+
+func executeCoreGITAction(ctx *plugin.ActionContext, request *plugin.ExecuteActionRequest) ([]byte, error) {
+	credentials, err := ctx.GetCredentials("github")
+	if err != nil {
+		return nil, err
+	}
+
+	command, ok := request.Parameters[commandParameterName]
+	if !ok {
+		return nil, errors.New("command to GIT CLI wasn't provided")
+	}
+
+	var environment environmentVariables
+	for key, value := range credentials {
+		environment = append(environment, fmt.Sprintf("%s=%v", strings.ToUpper(key), value))
+	}
 
 	output, err := common.ExecuteCommand(request, environment, "/bin/bash", "-c", command)
 	if err != nil {
@@ -107,7 +128,7 @@ func executeCoreKubernetesAction(ctx *plugin.ActionContext, request *plugin.Exec
 		fmt.Sprintf("KUBECONFIG=%s", pathToKubeConfig),
 	}
 
-	if output, err := initKubernetesEnvironment(temporaryPath, environment, fmt.Sprintf("%s", bearerToken), fmt.Sprintf("%s", apiServerURL), verify); err != nil {
+	if output, err := initKubernetesEnvironment(environment, fmt.Sprintf("%s", bearerToken), fmt.Sprintf("%s", apiServerURL), verify); err != nil {
 		return common.GetCommandFailureResponse(output, err)
 	}
 
@@ -240,7 +261,7 @@ func executeCoreAzureAction(ctx *plugin.ActionContext, request *plugin.ExecuteAc
 	return output, nil
 }
 
-func initKubernetesEnvironment(temporaryPath string, environment environmentVariables, bearerToken string, apiServerURL string, verifyCertificate bool) ([]byte, error) {
+func initKubernetesEnvironment(environment environmentVariables, bearerToken string, apiServerURL string, verifyCertificate bool) ([]byte, error) {
 
 	cmd := fmt.Sprintf("kubectl config set-cluster cluster --server=%s", apiServerURL)
 	if !verifyCertificate {
