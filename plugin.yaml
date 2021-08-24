@@ -18,3 +18,5 @@ connection_types:
     reference: gcp
   azure:
     refernece: azure
+  github:
+    refernece: github

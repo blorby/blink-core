@@ -1,0 +1,9 @@
+# Describes the action and it's parameters
+name: "git"
+description: "Executes GIT CLI command"
+enabled: true
+parameters:
+  Command:
+    type: "code:bash"
+    description: "git command"
+    required: true
