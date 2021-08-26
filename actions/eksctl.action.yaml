@@ -1,0 +1,13 @@
+# Describes the action and it's parameters
+name: "eksctl"
+description: "Executes eksctl command"
+enabled: true
+parameters:
+  Command:
+    type: "code:bash"
+    description: "aws command or a script containing aws command"
+    required: true
+  Region:
+    type: "string"
+    description: "Region for aws command"
+    required: true
