@@ -40,6 +40,9 @@ RUN apt-get update && \
     ./awscli-bundle/install -i /usr/aws -b /usr/bin/aws && \
     chmod +x /usr/bin/aws && \
     rm -rf ./awscli-bundle* && \
+    # Downloading eksctl \
+    curl --silent --location "https://github.com/weaveworks/eksctl/releases/latest/download/eksctl_$(uname -s)_amd64.tar.gz" | tar xz -C /tmp && \
+    mv /tmp/eksctl /usr/local/bin && \
     # Downloading kubectl
     curl "https://amazon-eks.s3.us-west-2.amazonaws.com/1.20.4/2021-04-12/bin/linux/amd64/kubectl" -o "/usr/bin/kubectl" && \
     chmod +x /usr/bin/kubectl && \

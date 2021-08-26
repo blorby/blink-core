@@ -90,6 +90,7 @@ func NewCorePlugin(rootPluginDirectory string) (*CorePlugin, error) {
 		"email":         executeCoreMailAction,
 		"aws":           executeCoreAWSAction,
 		"git":           executeCoreGITAction,
+		"eksctl":        executeCoreAWSAction,
 		"kubectl":       executeCoreKubernetesAction,
 		"kubectl_apply": executeCoreKubernetesApplyAction,
 		"gcloud":        executeCoreGoogleCloudAction,
