@@ -35,11 +35,10 @@ RUN apt-get update && \
     curl https://bootstrap.pypa.io/get-pip.py | python && \
     pip install -r requirements.txt && \
     # Downloading aws cli
-    curl "https://s3.amazonaws.com/aws-cli/awscli-bundle-1.16.312.zip" -o "awscli-bundle.zip" && \
-    unzip awscli-bundle.zip && \
-    ./awscli-bundle/install -i /usr/aws -b /usr/bin/aws && \
-    chmod +x /usr/bin/aws && \
-    rm -rf ./awscli-bundle* && \
+    curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64-2.2.32.zip" -o awscliv2.zip && \
+    unzip awscliv2.zip && \
+    ./aws/install && \
+    rm -rf ./aws awscliv2.zip && \
     # Downloading eksctl \
     curl --silent --location "https://github.com/weaveworks/eksctl/releases/latest/download/eksctl_$(uname -s)_amd64.tar.gz" | tar xz -C /tmp && \
     mv /tmp/eksctl /usr/local/bin && \
