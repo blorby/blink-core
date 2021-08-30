@@ -8,7 +8,6 @@ import (
 	"github.com/blinkops/blink-sdk/plugin"
 	"github.com/blinkops/blink-sdk/plugin/connections"
 	log "github.com/sirupsen/logrus"
-	"strings"
 )
 
 func executeCoreNodejsAction(ctx *plugin.ActionContext, request *plugin.ExecuteActionRequest) ([]byte, error) {
@@ -35,6 +34,10 @@ func executeCoreNodejsAction(ctx *plugin.ActionContext, request *plugin.ExecuteA
 	base64EncodedBytes := base64.StdEncoding.EncodeToString(rawJsonBytes)
 	output, err := common.ExecuteCommand(request, nil, "/usr/bin/node", nodejsRunnerPath, "--input", base64EncodedBytes)
 
+	if err != nil {
+		return common.GetCommandFailureResponse(output, err)
+	}
+
 	resultJson := struct {
 		Context map[string]interface{} `json:"context"`
 		Log     string                 `json:"log"`
@@ -42,12 +45,14 @@ func executeCoreNodejsAction(ctx *plugin.ActionContext, request *plugin.ExecuteA
 		Error   string                 `json:"error"`
 	}{}
 
-	parsedOutput := strings.TrimSpace(string(output))
+	if err := json.Unmarshal(output, &resultJson); err != nil {
+		log.Error("Failed to unmarshal result, err: ", err)
+		return nil, err
+	}
 
-	if err != nil {
-		resultJson.Error = parsedOutput
-	} else {
-		resultJson.Output = parsedOutput
+	ctx.ReplaceContext(resultJson.Context)
+	if resultJson.Error == "" {
+		return []byte(resultJson.Output), nil
 	}
 
 	result := common.CommandOutput{Output: resultJson.Output, Error: resultJson.Error}
