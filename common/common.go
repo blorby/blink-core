@@ -2,7 +2,6 @@ package common
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/blinkops/blink-sdk/plugin"
@@ -60,13 +59,5 @@ func ExecuteCommand(request *plugin.ExecuteActionRequest, environment []string, 
 }
 
 func GetCommandFailureResponse(output []byte, err error) ([]byte, error) {
-	failureResult := CommandOutput{Output: string(output), Error: err.Error()}
-
-	resultBytes, err := json.Marshal(failureResult)
-	if err != nil {
-		log.Error("Failed to properly marshal result, err: ", err)
-		return nil, err
-	}
-
-	return resultBytes, nil
+	return nil, errors.New(string(output) + " - error: " + err.Error())
 }
