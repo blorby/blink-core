@@ -25,7 +25,7 @@ COPY nodejs nodejs/
 RUN apt-get update && \
     apt-get install -y ca-certificates curl apt-transport-https lsb-release gnupg && \
     update-ca-certificates && \
-    apt-get install -y jq jp unzip
+    apt-get install -y jq jp unzip git
 
 # Downloading python3 & pip
 RUN apt-get update && \
