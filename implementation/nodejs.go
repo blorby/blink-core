@@ -38,28 +38,5 @@ func executeCoreNodejsAction(ctx *plugin.ActionContext, request *plugin.ExecuteA
 		return common.GetCommandFailureResponse(output, err)
 	}
 
-	resultJson := struct {
-		Context map[string]interface{} `json:"context"`
-		Log     string                 `json:"log"`
-		Output  string                 `json:"output"`
-		Error   string                 `json:"error"`
-	}{}
-
-	if err := json.Unmarshal(output, &resultJson); err != nil {
-		log.Error("Failed to unmarshal result, err: ", err)
-		return nil, err
-	}
-
-	ctx.ReplaceContext(resultJson.Context)
-	if resultJson.Error == "" {
-		return []byte(resultJson.Output), nil
-	}
-
-	result := common.CommandOutput{Output: resultJson.Output, Error: resultJson.Error}
-	finalJsonBytes, err := json.Marshal(result)
-	if err != nil {
-		return nil, err
-	}
-
-	return finalJsonBytes, nil
+	return output, nil
 }
