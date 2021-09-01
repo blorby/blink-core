@@ -3,7 +3,7 @@ module github.com/blinkops/blink-core
 go 1.16
 
 require (
-	github.com/blinkops/blink-sdk v1.0.48
+	github.com/blinkops/blink-sdk v1.0.51
 	github.com/pkg/errors v0.8.1
 	github.com/satori/go.uuid v1.2.0
 	github.com/sirupsen/logrus v1.8.1
