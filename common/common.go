@@ -1,12 +1,12 @@
 package common
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"github.com/blinkops/blink-sdk/plugin"
 	log "github.com/sirupsen/logrus"
 	"os/exec"
+	"syscall"
 	"time"
 )
 
@@ -20,18 +20,9 @@ func ExecuteBash(request *plugin.ExecuteActionRequest, environment []string, cmd
 }
 
 func ExecuteCommand(request *plugin.ExecuteActionRequest, environment []string, name string, args ...string) ([]byte, error) {
-	ctx := context.Background()
 
-	if request != nil && request.Timeout != 0 {
-		// Create a new context and add a timeout to it
-		tctx, cancel := context.WithTimeout(ctx, time.Duration(request.Timeout)*time.Second)
-		ctx = tctx
-		defer cancel()
-	}
-
-	// Create the command with our context
-	command := exec.CommandContext(
-		ctx,
+	commandFinished := make (chan struct{})
+	command := exec.Command(
 		name,
 		args...)
 
@@ -39,13 +30,35 @@ func ExecuteCommand(request *plugin.ExecuteActionRequest, environment []string, 
 		command.Env = environment
 	}
 
+	command.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
+
+	// golang context with deadline kills the process but not the children, hence our own impl to kill all after timeout
+
+	// Internally this will cause Go to call setpgid(2) between fork(2) and execve(2),
+	// to assign the child process a new PGID identical to its PID.
+	// This allows us to kill all processes in the process group by sending a KILL to -PID of the process,
+	// which is the same as -PGID. Assuming that the child process did not use setpgid(2) when spawning its own child,
+	// this should kill the child along with all of its children on any *Nix systems.
+	var timedOut bool
+	if request != nil && request.Timeout != 0 {
+		// timeout goroutine
+		go func() {
+			select {
+			case <- time.After(time.Duration(request.Timeout) * time.Second):
+				syscall.Kill(-command.Process.Pid, syscall.SIGKILL)
+				timedOut = true
+			case <- commandFinished:
+			}
+		}()
+	}
+
 	log.Infof("Executing %s", command.String())
 	outputBytes, execErr := command.CombinedOutput()
+	// signal timeout goroutine to exit
+	close(commandFinished)
 
-	// We want to check the context error to see if the timeout was executed.
-	// The error returned by cmd.Output() will be OS specific based on what
-	// happens when a process is killed.
-	if ctx.Err() == context.DeadlineExceeded {
+	// Check for timeout
+	if timedOut {
 		timeoutError := errors.New(fmt.Sprintf("command timed out: %s", command))
 		log.Error(timeoutError)
 		return nil, timeoutError
