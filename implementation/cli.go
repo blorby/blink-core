@@ -3,14 +3,15 @@ package implementation
 import (
 	"errors"
 	"fmt"
+	"io/ioutil"
+	"os"
+	"strings"
+
 	"github.com/blinkops/blink-core/common"
 	"github.com/blinkops/blink-sdk/plugin"
 	errors2 "github.com/pkg/errors"
 	uuid "github.com/satori/go.uuid"
 	log "github.com/sirupsen/logrus"
-	"io/ioutil"
-	"os"
-	"strings"
 )
 
 type environmentVariables []string
@@ -170,7 +171,7 @@ func executeCoreKubernetesApplyAction(ctx *plugin.ActionContext, request *plugin
 		}
 	}()
 
-	request.Parameters[commandParameterName] = fmt.Sprintf("apply -f %s", temporaryPath)
+	request.Parameters[commandParameterName] = fmt.Sprintf("kubectl apply -f %s", temporaryPath)
 	return executeCoreKubernetesAction(ctx, request)
 }
 
