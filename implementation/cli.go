@@ -159,7 +159,7 @@ func executeCoreKubernetesApplyAction(ctx *plugin.ActionContext, request *plugin
 	temporaryUUID := uuid.NewV4().String()
 	temporaryPath := fmt.Sprintf("/tmp/kubectl-apply-%s", temporaryUUID)
 
-	err = ioutil.WriteFile(temporaryUUID, []byte(applyFileContents), 0664)
+	err = ioutil.WriteFile(temporaryPath, []byte(applyFileContents), 0664)
 	if err != nil {
 		return nil, errors2.Wrap(err, "failed creating the apply file")
 	}
