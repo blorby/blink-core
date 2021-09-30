@@ -24,14 +24,15 @@ def write_output(output: str, context: Context, error):
     sys.stdout.write(json.dumps(output_struct))
 
 
-def decode_raw_input(raw_input) -> dict:
-    raw_input_json = base64.b64decode(raw_input)
-    decoded_input_json = json.loads(raw_input_json)
+def decode_raw_input(raw_input_file) -> dict:
+    raw_input = ""
+    with open(raw_input_file) as f:
+        raw_input = f.read()
 
-    base64_encoded_python_code = decoded_input_json['code']
-    decoded_python_code = base64.b64decode(base64_encoded_python_code)
+    decoded_input_json = json.loads(raw_input)
+    python_code = decoded_input_json['code']
+    decoded_input_json['code'] = python_code
 
-    decoded_input_json['code'] = decoded_python_code
     return decoded_input_json
 
 
@@ -50,8 +51,8 @@ def execute_user_supplied_code(context: Context, connections: Dict[str, Connecti
     exec(code_to_be_executed)
 
 
-def entry_point(raw_input):
-    decoded_input = decode_raw_input(raw_input)
+def entry_point(raw_input_file):
+    decoded_input = decode_raw_input(raw_input_file)
 
     context = Context(decoded_input['context'])
     code_to_be_executed = decoded_input['code']
@@ -73,7 +74,7 @@ def entry_point(raw_input):
 def main():
     parser = argparse.ArgumentParser(description="Python action runner process wrapper")
     parser.add_argument(
-        "--input", required=True, help="The raw marshaled input json struct"
+        "--input", required=True, help="File location containing the raw marshaled input json struct"
     )
 
     arguments = parser.parse_args()
