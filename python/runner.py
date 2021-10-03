@@ -30,9 +30,6 @@ def decode_raw_input(raw_input_file) -> dict:
         raw_input = f.read()
 
     decoded_input_json = json.loads(raw_input)
-    python_code = decoded_input_json['code']
-    decoded_input_json['code'] = python_code
-
     return decoded_input_json
 
 
