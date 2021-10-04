@@ -1,13 +1,14 @@
 package implementation
 
 import (
-	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"github.com/blinkops/blink-core/common"
 	"github.com/blinkops/blink-sdk/plugin"
 	"github.com/blinkops/blink-sdk/plugin/connections"
 	log "github.com/sirupsen/logrus"
+	"io/ioutil"
+	"os"
 )
 
 func executeCorePythonAction(ctx *plugin.ActionContext, request *plugin.ExecuteActionRequest) ([]byte, error) {
@@ -17,13 +18,11 @@ func executeCorePythonAction(ctx *plugin.ActionContext, request *plugin.ExecuteA
 		return nil, errors.New("no code provided for execution")
 	}
 
-	base64EncodedCode := base64.StdEncoding.EncodeToString([]byte(code))
-
 	structToBeMarshaled := struct {
 		Code        string                                    `json:"code"`
 		Context     map[string]interface{}                    `json:"context"`
 		Connections map[string]connections.ConnectionInstance `json:"connections"`
-	}{Code: base64EncodedCode, Context: ctx.GetAllContextEntries(), Connections: ctx.GetAllConnections()}
+	}{Code: code, Context: ctx.GetAllContextEntries(), Connections: ctx.GetAllConnections()}
 
 	rawJsonBytes, err := json.Marshal(structToBeMarshaled)
 	if err != nil {
@@ -31,9 +30,19 @@ func executeCorePythonAction(ctx *plugin.ActionContext, request *plugin.ExecuteA
 		return nil, err
 	}
 
-	base64EncodedBytes := base64.StdEncoding.EncodeToString(rawJsonBytes)
-	output, err := common.ExecuteCommand(request, nil, "/bin/python", pythonRunnerPath, "--input", base64EncodedBytes)
+	filePath, err := writeToTempFile(rawJsonBytes)
+	if err != nil {
+		return nil, err
+	}
+	defer func(name string) {
+		err := os.Remove(name)
+		if err != nil {
+			log.Error("Failed to remove temp file ", err)
+		}
+	}(filePath)
 
+	output, err := common.ExecuteCommand(request, nil, "/bin/python", pythonRunnerPath, "--input", filePath)
+	
 	resultJson := struct {
 		Context map[string]interface{} `json:"context"`
 		Log     string                 `json:"log"`
@@ -63,4 +72,24 @@ func executeCorePythonAction(ctx *plugin.ActionContext, request *plugin.ExecuteA
 	}
 
 	return finalJsonBytes, nil
+}
+
+func writeToTempFile(bytes []byte) (string, error) {
+	file, err := ioutil.TempFile("/tmp", "blink-py-")
+	if err != nil {
+		return "", err
+	}
+
+	defer func() {
+		// Close the file
+		if err := file.Close(); err != nil {
+			log.Error("failed to close file", err)
+		}
+	}()
+
+	_, err = file.Write(bytes)
+	if err != nil {
+		return "", err
+	}
+	return file.Name(), nil
 }
