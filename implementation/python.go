@@ -41,7 +41,7 @@ func executeCorePythonAction(ctx *plugin.ActionContext, request *plugin.ExecuteA
 		}
 	}(filePath)
 
-	output, err := common.ExecuteCommand(request, nil, "/usr/local/bin/python3", pythonRunnerPath, "--input", filePath)
+	output, err := common.ExecuteCommand(request, nil, "/bin/python", pythonRunnerPath, "--input", filePath)
 	
 	resultJson := struct {
 		Context map[string]interface{} `json:"context"`
