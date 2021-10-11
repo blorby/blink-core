@@ -25,7 +25,12 @@ COPY nodejs nodejs/
 ENV DEBIAN_FRONTEND="noninteractive"
 
 RUN apt-get update && \
-    apt-get install -y ca-certificates curl apt-transport-https lsb-release gnupg && \
+    apt-get install -y \
+    ca-certificates \
+    curl \
+    software-properties-common \
+    apt-transport-https \
+    lsb-release gnupg && \
     update-ca-certificates && \
     apt-get install -y jq jp unzip git
 
@@ -72,6 +77,14 @@ RUN echo "deb [signed-by=/usr/share/keyrings/cloud.google.gpg] http://packages.c
     apt-get update -y && \
     apt-get install -y google-cloud-sdk
 
+
+# Install Vault cli.
+RUN curl -fsSL https://apt.releases.hashicorp.com/gpg | apt-key add -
+RUN apt-get update && \
+    apt-add-repository "deb [arch=amd64] https://apt.releases.hashicorp.com $(lsb_release -cs) main" && \
+    apt-get install vault && \
+    rm -rf /var/lib/apt/lists/* && \
+    setcap cap_ipc_lock= /usr/bin/vault
 
 # Expose the gRPC port.
 EXPOSE 1337

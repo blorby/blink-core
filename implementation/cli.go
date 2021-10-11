@@ -21,6 +21,8 @@ const (
 	commandParameterName      = "Command"
 	fileParameterName         = "file"
 	regionEnvironmentVariable = "AWS_DEFAULT_REGION"
+	vaultAddress              = "VAULT_ADDR"
+	vaultToken                = "VAULT_TOKEN"
 )
 
 func executeCoreAWSAction(ctx *plugin.ActionContext, request *plugin.ExecuteActionRequest) ([]byte, error) {
@@ -133,6 +135,46 @@ func executeCoreKubernetesAction(ctx *plugin.ActionContext, request *plugin.Exec
 		return common.GetCommandFailureResponse(output, err)
 	}
 
+	output, err := common.ExecuteBash(request, environment, command)
+	if err != nil {
+		return common.GetCommandFailureResponse(output, err)
+	}
+
+	return output, nil
+}
+
+func executeCoreVaultAction(ctx *plugin.ActionContext, request *plugin.ExecuteActionRequest) ([]byte, error) {
+	credentials, err := ctx.GetCredentials("vault")
+	if err != nil {
+		return nil, err
+	}
+
+	token, ok := credentials[vaultToken]
+	if !ok {
+		return nil, errors.New("connection to vault is invalid")
+	}
+
+	apiServerURL, ok := credentials[vaultAddress]
+	if !ok {
+		return nil, errors.New("connection to vault is invalid")
+	}
+
+	command, ok := request.Parameters[commandParameterName]
+	if !ok {
+		return nil, errors.New("command to vault wasn't provided")
+	}
+
+	environment := environmentVariables{
+		fmt.Sprintf("%s=%s", vaultAddress, apiServerURL),
+		fmt.Sprintf("PATH=%s", os.Getenv("PATH")),
+	}
+
+	// RUN vault login to connect to the vault at the address provided by the user in the connection.
+	if output, err := common.ExecuteCommand(nil, environment, "/usr/bin/vault", "login", token.(string)); err != nil {
+		return common.GetCommandFailureResponse(output, err)
+	}
+
+	// execute the user command
 	output, err := common.ExecuteBash(request, environment, command)
 	if err != nil {
 		return common.GetCommandFailureResponse(output, err)

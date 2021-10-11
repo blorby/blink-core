@@ -1,0 +1,9 @@
+# Describes the action and it's parameters
+name: "vault"
+description: "Executes vault CLI command"
+enabled: true
+parameters:
+  Command:
+    type: "code:bash"
+    description: "vault command or a script containing vault command"
+    required: true
