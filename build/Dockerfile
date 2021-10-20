@@ -13,7 +13,7 @@ FROM base AS builder
 RUN go install -v ./...
 
 #  ubuntu 20.04
-FROM ubuntu:focal-20210416 AS plugin
+FROM ubuntu:focal-20210921 AS plugin
 
 WORKDIR /blink-core
 COPY --from=builder /go/bin/blink-core .
