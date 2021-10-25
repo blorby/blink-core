@@ -31,10 +31,7 @@ func executeCoreAWSAction(ctx *plugin.ActionContext, request *plugin.ExecuteActi
 		return nil, err
 	}
 
-	region, ok := request.Parameters[regionParameterName]
-	if !ok {
-		return nil, errors.New("region to AWS CLI wasn't provided")
-	}
+
 
 	command, ok := request.Parameters[commandParameterName]
 	if !ok {
@@ -46,7 +43,10 @@ func executeCoreAWSAction(ctx *plugin.ActionContext, request *plugin.ExecuteActi
 		environment = append(environment, fmt.Sprintf("%s=%v", strings.ToUpper(key), value))
 	}
 
-	environment = append(environment, fmt.Sprintf("%s=%v", regionEnvironmentVariable, region))
+	region, ok := request.Parameters[regionParameterName]
+	if ok {
+		environment = append(environment, fmt.Sprintf("%s=%v", regionEnvironmentVariable, region))
+	}
 
 	output, err := common.ExecuteCommand(request, environment, "/bin/bash", "-c", command)
 	if err != nil {
