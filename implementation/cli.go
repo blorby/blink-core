@@ -31,7 +31,10 @@ func executeCoreAWSAction(ctx *plugin.ActionContext, request *plugin.ExecuteActi
 		return nil, err
 	}
 
-
+	region, ok := request.Parameters[regionParameterName]
+	if !ok {
+		region = "us-east-1"
+	}
 
 	command, ok := request.Parameters[commandParameterName]
 	if !ok {
@@ -43,10 +46,7 @@ func executeCoreAWSAction(ctx *plugin.ActionContext, request *plugin.ExecuteActi
 		environment = append(environment, fmt.Sprintf("%s=%v", strings.ToUpper(key), value))
 	}
 
-	region, ok := request.Parameters[regionParameterName]
-	if ok {
-		environment = append(environment, fmt.Sprintf("%s=%v", regionEnvironmentVariable, region))
-	}
+	environment = append(environment, fmt.Sprintf("%s=%v", regionEnvironmentVariable, region))
 
 	output, err := common.ExecuteCommand(request, environment, "/bin/bash", "-c", command)
 	if err != nil {
