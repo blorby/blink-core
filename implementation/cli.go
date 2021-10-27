@@ -38,7 +38,7 @@ func executeCoreAWSAction(ctx *plugin.ActionContext, request *plugin.ExecuteActi
 
 	region, ok := request.Parameters[regionParameterName]
 	if !ok {
-		return nil, errors.New("region to AWS CLI wasn't provided")
+		region = "us-east-1"
 	}
 
 	command, ok := request.Parameters[commandParameterName]
