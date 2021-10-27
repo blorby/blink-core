@@ -12,8 +12,8 @@ FROM base AS builder
 # Install the package
 RUN go install -v ./...
 
-#  ubuntu 20.04
-FROM ubuntu:focal-20210416 AS plugin
+#  ubuntu ignite 18.04
+FROM weaveworks/ignite-ubuntu AS plugin
 
 WORKDIR /blink-core
 COPY --from=builder /go/bin/blink-core .
@@ -85,6 +85,9 @@ RUN apt-get update && \
     apt-get install vault && \
     rm -rf /var/lib/apt/lists/* && \
     setcap cap_ipc_lock= /usr/bin/vault
+
+# Prerequisits for ignite
+RUN apt-get update && apt-get install -y systemd libpam-systemd
 
 # Expose the gRPC port.
 EXPOSE 1337

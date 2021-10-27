@@ -23,6 +23,11 @@ const (
 	regionEnvironmentVariable = "AWS_DEFAULT_REGION"
 	vaultAddress              = "VAULT_ADDR"
 	vaultToken                = "VAULT_TOKEN"
+	awsAccessKeyId            = "aws_access_key_id"
+	awsSecretAccessKey        = "aws_secret_access_key"
+	awsSessionToken           = "aws_session_token"
+	roleArn                   = "role_arn"
+	externalID                = "external_id"
 )
 
 func executeCoreAWSAction(ctx *plugin.ActionContext, request *plugin.ExecuteActionRequest) ([]byte, error) {
@@ -42,7 +47,22 @@ func executeCoreAWSAction(ctx *plugin.ActionContext, request *plugin.ExecuteActi
 	}
 
 	var environment environmentVariables
-	for key, value := range credentials {
+
+	m := convertInterfaceMapToStringMap(credentials)
+	sessionType, k, v := determineConnectionType(m)
+	switch sessionType {
+	case "roleBased":
+		m[awsAccessKeyId], m[awsSecretAccessKey], m[awsSessionToken], err = assumeRole(k, v, region)
+		if err != nil {
+			return nil, fmt.Errorf("unable to assume role with error: %w", err)
+		}
+	case "userBased":
+		m[awsSessionToken] = ""
+	default:
+		return nil, fmt.Errorf("invalid credentials: make sure access+secret key are supplied OR role_arn+external_id")
+	}
+
+	for key, value := range m {
 		environment = append(environment, fmt.Sprintf("%s=%v", strings.ToUpper(key), value))
 	}
 
