@@ -49,7 +49,7 @@ func executeCoreAWSAction(ctx *plugin.ActionContext, request *plugin.ExecuteActi
 	var environment environmentVariables
 
 	m := convertInterfaceMapToStringMap(credentials)
-	sessionType, k, v := determineConnectionType(m)
+	sessionType, k, v := detectConnectionType(m)
 	switch sessionType {
 	case "roleBased":
 		m[awsAccessKeyId], m[awsSecretAccessKey], m[awsSessionToken], err = assumeRole(k, v, region)
