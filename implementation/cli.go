@@ -3,6 +3,9 @@ package implementation
 import (
 	"errors"
 	"fmt"
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/sts"
 	"io/ioutil"
 	"os"
 	"strings"
@@ -52,7 +55,12 @@ func executeCoreAWSAction(ctx *plugin.ActionContext, request *plugin.ExecuteActi
 	sessionType, k, v := detectConnectionType(m)
 	switch sessionType {
 	case "roleBased":
-		m[awsAccessKeyId], m[awsSecretAccessKey], m[awsSessionToken], err = assumeRole(k, v, region)
+		sess, _ := session.NewSession(&aws.Config{
+			Region: aws.String(region),
+		})
+
+		svc := sts.New(sess)
+		m[awsAccessKeyId], m[awsSecretAccessKey], m[awsSessionToken], err = assumeRole(svc, k, v)
 		if err != nil {
 			return nil, fmt.Errorf("unable to assume role with error: %w", err)
 		}
