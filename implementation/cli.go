@@ -67,7 +67,6 @@ func executeCoreAWSAction(ctx *plugin.ActionContext, request *plugin.ExecuteActi
 	}
 
 	environment = append(environment, fmt.Sprintf("%s=%v", regionEnvironmentVariable, region))
-
 	output, err := common.ExecuteCommand(request, environment, "/bin/bash", "-c", command)
 	if err != nil {
 		return common.GetCommandFailureResponse(output, err)
