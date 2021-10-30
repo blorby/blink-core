@@ -30,6 +30,23 @@ class Context:
 
         item[last_key] = value
 
+    def __getattr__(self, item):
+        try:
+            return object.__getattribute__(self, item)
+        except:
+            pass
+
+        return Context(self.internal_dict.__getitem__(item))
+
+    def __setattr__(self, key, value):
+        try:
+            object.__setattr__(self, key, value)
+            return
+        except:
+            pass
+
+        return self.internal_dict.__setitem__(key, value)
+
     def __resolve_inner_key(self, key, create_keys: bool = False):
         key_parts = key.split(self._KEY_SEPARATOR)
 
@@ -51,25 +68,5 @@ class Context:
 
         return current_item
 
-    def get(self, key):
-        return self.__getitem__(key)
-
-    def set(self, key, value):
-        path = self._validate_prefix(key)
-        key = self._KEY_SEPARATOR.join(path)
-        self.__setitem__(key, value)
-
-    def delete(self, key):
-        path = self._validate_prefix(key)
-        key_to_delete = path.pop(len(path) - 1)
-        key = self._KEY_SEPARATOR.join(path)
-        parent_dict = self.__resolve_inner_key(key)
-        parent_dict.pop(key_to_delete, None)
-
-    def _validate_prefix(self, key):
-        path = key.split(self._KEY_SEPARATOR)
-
-        if path[0] != self._VARIABLES_PREFIX:
-            raise KeyError(f'Key {key} is invalid')
-
-        return path
+    def __str__(self):
+        return str(self.internal_dict)

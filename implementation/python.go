@@ -60,18 +60,12 @@ func executeCorePythonAction(ctx *plugin.ActionContext, request *plugin.ExecuteA
 		return nil, err
 	}
 
+	if resultJson.Error != "" {
+		return common.GetCommandFailureResponse([]byte(resultJson.Output), errors.New(resultJson.Error))
+	}
+
 	ctx.ReplaceContext(resultJson.Context)
-	if resultJson.Error == "" {
-		return []byte(resultJson.Output), nil
-	}
-
-	result := common.CommandOutput{Output: resultJson.Output, Error: resultJson.Error}
-	finalJsonBytes, err := json.Marshal(result)
-	if err != nil {
-		return nil, err
-	}
-
-	return finalJsonBytes, nil
+	return []byte(resultJson.Output), nil
 }
 
 func writeToTempFile(bytes []byte) (string, error) {
