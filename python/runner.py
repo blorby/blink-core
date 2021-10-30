@@ -21,7 +21,7 @@ def write_output(output: str, context: Context, error):
     }
 
     if context is not None:
-        output_struct['context'] = context.internal_dict
+        output_struct['context'] = context.map.toDict()
 
     sys.stdout.write(json.dumps(output_struct))
 
