@@ -72,5 +72,12 @@ func ExecuteCommand(request *plugin.ExecuteActionRequest, environment []string, 
 }
 
 func GetCommandFailureResponse(output []byte, err error) ([]byte, error) {
-	return nil, errors.New(string(output) + " - error: " + err.Error())
+	errorAsString := ""
+	if len(output) > 0 {
+		errorAsString += string(output) + " - "
+	}
+
+	errorAsString += "error: " + err.Error()
+
+	return nil, errors.New(errorAsString)
 }
