@@ -42,6 +42,7 @@ func (p *CorePlugin) ExecuteAction(ctx *plugin.ActionContext, request *plugin.Ex
 		log.Error("Failed executing action, err: ", err)
 		return nil, err
 	}
+	log.Debugf("Finished executing action: %v", request)
 
 	if len(resultBytes) > 0 && resultBytes[len(resultBytes)-1] == '\n' {
 		resultBytes = resultBytes[:len(resultBytes)-1]

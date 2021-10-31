@@ -1,13 +1,13 @@
 package implementation
 
 import (
-	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"github.com/blinkops/blink-core/common"
 	"github.com/blinkops/blink-sdk/plugin"
 	"github.com/blinkops/blink-sdk/plugin/connections"
 	log "github.com/sirupsen/logrus"
+	"os"
 )
 
 func executeCoreNodejsAction(ctx *plugin.ActionContext, request *plugin.ExecuteActionRequest) ([]byte, error) {
@@ -17,13 +17,11 @@ func executeCoreNodejsAction(ctx *plugin.ActionContext, request *plugin.ExecuteA
 		return nil, errors.New("no code provided for execution")
 	}
 
-	base64EncodedCode := base64.StdEncoding.EncodeToString([]byte(code))
-
 	structToBeMarshaled := struct {
 		Code        string                                    `json:"code"`
 		Context     map[string]interface{}                    `json:"context"`
 		Connections map[string]connections.ConnectionInstance `json:"connections"`
-	}{Code: base64EncodedCode, Context: ctx.GetAllContextEntries(), Connections: ctx.GetAllConnections()}
+	}{Code: code, Context: ctx.GetAllContextEntries(), Connections: ctx.GetAllConnections()}
 
 	rawJsonBytes, err := json.Marshal(structToBeMarshaled)
 	if err != nil {
@@ -31,8 +29,13 @@ func executeCoreNodejsAction(ctx *plugin.ActionContext, request *plugin.ExecuteA
 		return nil, err
 	}
 
-	base64EncodedBytes := base64.StdEncoding.EncodeToString(rawJsonBytes)
-	output, err := common.ExecuteCommand(request, nil, "/usr/bin/node", nodejsRunnerPath, "--input", base64EncodedBytes)
+	filePath, err := common.WriteToTempFile(rawJsonBytes, "blink-js-")
+	if err != nil {
+		return nil, err
+	}
+	defer func(name string) {_ = os.Remove(name) }(filePath)
+
+	output, err := common.ExecuteCommand(request, nil, "/usr/bin/node", nodejsRunnerPath, "--input", filePath)
 
 	if err != nil {
 		return common.GetCommandFailureResponse(output, err)

@@ -8,15 +8,20 @@ console.log = function(value)
 };
 
 const inputArgs = process.argv.slice(2);
-let data;
+let file;
 
 if (inputArgs[0] === '--input')
-    data = inputArgs[1]
+    file = inputArgs[1]
 
-const inputBuffer = new Buffer.from(data, 'base64');
-const inputData = inputBuffer.toString('utf-8');
-const inputJson = JSON.parse(inputData)
-const codeBuffer = new Buffer.from(inputJson.code, 'base64');
-const inputCode = codeBuffer.toString('utf-8');
+const fs = require('fs')
 
-eval(inputCode)
+try {
+    const data = fs.readFileSync(file, 'utf8')
+    const inputJson = JSON.parse(data)
+    const inputCode = inputJson.code
+
+    eval(inputCode)
+
+} catch (err) {
+    console.error(err)
+}

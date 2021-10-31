@@ -7,7 +7,6 @@ import (
 	"github.com/blinkops/blink-sdk/plugin"
 	"github.com/blinkops/blink-sdk/plugin/connections"
 	log "github.com/sirupsen/logrus"
-	"io/ioutil"
 	"os"
 )
 
@@ -30,16 +29,11 @@ func executeCorePythonAction(ctx *plugin.ActionContext, request *plugin.ExecuteA
 		return nil, err
 	}
 
-	filePath, err := writeToTempFile(rawJsonBytes)
+	filePath, err := common.WriteToTempFile(rawJsonBytes, "blink-py-")
 	if err != nil {
 		return nil, err
 	}
-	defer func(name string) {
-		err := os.Remove(name)
-		if err != nil {
-			log.Error("Failed to remove temp file ", err)
-		}
-	}(filePath)
+	defer func(name string) {_ = os.Remove(name) }(filePath)
 
 	output, err := common.ExecuteCommand(request, nil, "/bin/python", pythonRunnerPath, "--input", filePath)
 	
@@ -66,24 +60,4 @@ func executeCorePythonAction(ctx *plugin.ActionContext, request *plugin.ExecuteA
 
 	ctx.ReplaceContext(resultJson.Context)
 	return []byte(resultJson.Output), nil
-}
-
-func writeToTempFile(bytes []byte) (string, error) {
-	file, err := ioutil.TempFile("/tmp", "blink-py-")
-	if err != nil {
-		return "", err
-	}
-
-	defer func() {
-		// Close the file
-		if err := file.Close(); err != nil {
-			log.Error("failed to close file", err)
-		}
-	}()
-
-	_, err = file.Write(bytes)
-	if err != nil {
-		return "", err
-	}
-	return file.Name(), nil
 }
