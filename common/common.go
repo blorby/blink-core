@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/blinkops/blink-sdk/plugin"
 	log "github.com/sirupsen/logrus"
+	"io/ioutil"
 	"os/exec"
 	"syscall"
 	"time"
@@ -80,4 +81,24 @@ func GetCommandFailureResponse(output []byte, err error) ([]byte, error) {
 	errorAsString += "error: " + err.Error()
 
 	return nil, errors.New(errorAsString)
+}
+
+func WriteToTempFile(bytes []byte, prefix string) (string, error) {
+	file, err := ioutil.TempFile("/tmp", prefix)
+	if err != nil {
+		return "", err
+	}
+
+	defer func() {
+		// Close the file
+		if err := file.Close(); err != nil {
+			log.Error("failed to close file", err)
+		}
+	}()
+
+	_, err = file.Write(bytes)
+	if err != nil {
+		return "", err
+	}
+	return file.Name(), nil
 }

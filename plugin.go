@@ -11,7 +11,12 @@ import (
 
 func main() {
 
+	timestampFormat := "02-01-2006 15:04:05.00"
 	log.SetLevel(log.DebugLevel)
+	log.SetFormatter(&log.TextFormatter{
+		TimestampFormat: timestampFormat,
+		FullTimestamp:   true,
+	})
 
 	// Get the current directory.
 	currentDirectory, err := os.Getwd()
