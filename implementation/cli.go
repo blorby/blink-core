@@ -9,6 +9,7 @@ import (
 	"io/ioutil"
 	"os"
 	"strings"
+	"regexp"
 
 	"github.com/blinkops/blink-core/common"
 	"github.com/blinkops/blink-sdk/plugin"
@@ -26,6 +27,8 @@ const (
 	regionEnvironmentVariable = "AWS_DEFAULT_REGION"
 	vaultAddress              = "VAULT_ADDR"
 	vaultToken                = "VAULT_TOKEN"
+	terraformAddress          = "TERRAFORM_ADDR"
+	terraformToken            = "TERRAFORM_TOKEN"
 	awsAccessKeyId            = "aws_access_key_id"
 	awsSecretAccessKey        = "aws_secret_access_key"
 	awsSessionToken           = "aws_session_token"
@@ -210,6 +213,58 @@ func executeCoreVaultAction(ctx *plugin.ActionContext, request *plugin.ExecuteAc
 	return output, nil
 }
 
+func executeCoreTerraFormAction(ctx *plugin.ActionContext, request *plugin.ExecuteActionRequest) ([]byte, error) {
+	credentials, err := ctx.GetCredentials("terraform")
+	if err != nil {
+		return nil, err
+	}
+
+	token, ok := credentials[terraformToken]
+	if !ok {
+		return nil, errors.New("connection to terraform is invalid")
+	}
+
+	apiServerURL, ok := credentials[terraformAddress]
+	if !ok {
+		return nil, errors.New("connection to terraform is invalid")
+	}
+
+	command, ok := request.Parameters[commandParameterName]
+	if !ok {
+		return nil, errors.New("command to terraform wasn't provided")
+	}
+
+	// Validate the command to check that it doesn't require input, since it can't be supplied through the cli
+	output, err := validateTerraFormCommand(command)
+	if err != nil {
+		return output, err
+	}
+
+	// Create credentials file if it doesn't exist and write the user's credentials to it
+	output, err = createTerraFormCredentialsFile(apiServerURL, token)
+	if err != nil {
+		return output, err
+	}
+
+	environment := environmentVariables{
+		fmt.Sprintf("%s=%s", terraformAddress, apiServerURL),
+		fmt.Sprintf("PATH=%s", os.Getenv("PATH")),
+	}
+
+	// Execute the user's command
+	output, err = common.ExecuteCommand(request, environment, "/usr/bin/terraform", strings.Fields(command)...)
+	if err != nil {
+		_, commandFailureResponse := common.GetCommandFailureResponse(output, err)
+
+		// Replace characters which make the output unreadable
+		outputStr := fixTerraFormOutput(commandFailureResponse.Error())
+
+		return nil, errors.New(outputStr)
+	}
+
+	return []byte(fixTerraFormOutput(string(output))), nil
+}
+
 func executeCoreKubernetesApplyAction(ctx *plugin.ActionContext, request *plugin.ExecuteActionRequest) ([]byte, error) {
 	_, err := ctx.GetCredentials("kubernetes")
 	if err != nil {
@@ -367,4 +422,71 @@ func initGoogleCloudEnvironment(temporaryPath string, credentials string) error 
 	pathToGCPConfig := fmt.Sprintf("%s/config", pathToGCPConfigDirectory)
 
 	return os.WriteFile(pathToGCPConfig, []byte(credentials), os.ModePerm)
+}
+
+func createTerraFormCredentialsFile(apiServerURL interface{}, token interface{}) ([]byte, error) {
+	// Create TerraForm credentials file
+	if _, err := os.Stat("/root/.terraform.d/credentials.tfrc.json"); errors.Is(err, os.ErrNotExist) {
+		err := os.Mkdir("/root/.terraform.d", 0644)
+		if err != nil {
+			return nil, err
+		}
+		credentialsFile, err := os.Create("/root/.terraform.d/credentials.tfrc.json")
+		if err != nil {
+			return nil, err
+		}
+		defer credentialsFile.Close()
+
+		content := fmt.Sprintf(`{
+  "credentials": {
+    "%s": {
+      "token": "%s"
+    }
+  }
+}`, apiServerURL.(string), token.(string))
+
+		_, err = credentialsFile.WriteString(content)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return nil, nil
+}
+
+func validateTerraFormCommand(command string) ([]byte, error) {
+	if strings.HasPrefix(command, "destroy") {
+		return nil, errors.New("please use \"apply -destroy -auto-approve\" in order to auto approve your changes")
+	}
+
+	autoApplyExists := false
+	destroyExists := false
+	if strings.HasPrefix(command, "apply") {
+		for _, field := range strings.Fields(command) {
+			if field == "-auto-approve" {
+				autoApplyExists = true
+			} else if field == "-destroy" {
+				destroyExists = true
+			}
+		}
+
+		if !autoApplyExists {
+			if !destroyExists {
+				return nil, errors.New("please use \"apply -auto-approve\" in order to auto approve your changes")
+			}
+			return nil, errors.New("please use \"apply -destroy -auto-approve\" in order to auto approve your changes")
+		}
+	}
+
+	return nil, nil
+}
+
+func fixTerraFormOutput(output string) string {
+	exp1 := regexp.MustCompile("\\[[0-9]+m")
+	exp2 := regexp.MustCompile("[╷│╵\u001B]+?")
+	exp3 := regexp.MustCompile(" +")
+	output = exp1.ReplaceAllString(output, "")
+	output = exp2.ReplaceAllString(output, "")
+	output = exp3.ReplaceAllString(output, " ")
+	return output
 }

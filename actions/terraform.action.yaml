@@ -1,0 +1,9 @@
+# Describes the action and it's parameters
+name: "terraform"
+description: "Executes TerraForm CLI command"
+enabled: true
+parameters:
+  Command:
+    type: "code:bash"
+    description: "terraform command or a script containing terraform command"
+    required: true
