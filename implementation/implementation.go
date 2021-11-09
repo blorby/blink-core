@@ -94,6 +94,7 @@ func NewCorePlugin(rootPluginDirectory string) (*CorePlugin, error) {
 		"eksctl":        executeCoreAWSAction,
 		"kubectl":       executeCoreKubernetesAction,
 		"vault":         executeCoreVaultAction,
+		"terraform":     executeCoreTerraFormAction,
 		"kubectl_apply": executeCoreKubernetesApplyAction,
 		"gcloud":        executeCoreGoogleCloudAction,
 		"az":            executeCoreAzureAction,
