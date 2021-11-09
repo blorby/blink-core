@@ -8,8 +8,8 @@ import (
 	"github.com/aws/aws-sdk-go/service/sts"
 	"io/ioutil"
 	"os"
-	"strings"
 	"regexp"
+	"strings"
 
 	"github.com/blinkops/blink-core/common"
 	"github.com/blinkops/blink-sdk/plugin"
@@ -252,7 +252,7 @@ func executeCoreTerraFormAction(ctx *plugin.ActionContext, request *plugin.Execu
 	}
 
 	// Execute the user's command
-	output, err = common.ExecuteCommand(request, environment, "/usr/bin/terraform", strings.Fields(command)...)
+	output, err = common.ExecuteBash(request, environment, command)
 	if err != nil {
 		_, commandFailureResponse := common.GetCommandFailureResponse(output, err)
 
