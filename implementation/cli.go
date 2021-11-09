@@ -234,6 +234,10 @@ func executeCoreTerraFormAction(ctx *plugin.ActionContext, request *plugin.Execu
 		return nil, errors.New("command to terraform wasn't provided")
 	}
 
+	//if !strings.HasPrefix(command, "terraform") {
+	//	return nil, errors.New("terraform commands must start with \"terraform\" prefix")
+	//}
+
 	// Validate the command to check that it doesn't require input, since it can't be supplied through the cli
 	output, err := validateTerraFormCommand(command)
 	if err != nil {
@@ -254,6 +258,10 @@ func executeCoreTerraFormAction(ctx *plugin.ActionContext, request *plugin.Execu
 	// Execute the user's command
 	output, err = common.ExecuteBash(request, environment, command)
 	if err != nil {
+		if strings.Contains(string(output), "Couldn't find an alternative") {
+			return nil, errors.New("terraform commands must start with \"terraform\" prefix")
+		}
+
 		_, commandFailureResponse := common.GetCommandFailureResponse(output, err)
 
 		// Replace characters which make the output unreadable
