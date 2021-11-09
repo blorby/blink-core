@@ -2,15 +2,16 @@ package implementation
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"github.com/blinkops/blink-core/common"
+	"github.com/blinkops/blink-core/implementation/execution"
 	"github.com/blinkops/blink-sdk/plugin"
+	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"strconv"
 )
 
-func executeCoreJQAction(_ *plugin.ActionContext, request *plugin.ExecuteActionRequest) ([]byte, error) {
+func executeCoreJQAction(e *execution.PrivateExecutionEnvironment, _ *plugin.ActionContext, request *plugin.ExecuteActionRequest) ([]byte, error) {
 	providedJson, ok := request.Parameters[jsonKey]
 	if !ok {
 		return nil, errors.New("no json provided for execution")
@@ -22,10 +23,10 @@ func executeCoreJQAction(_ *plugin.ActionContext, request *plugin.ExecuteActionR
 	}
 
 	cmd := fmt.Sprintf("/bin/echo '%s' | /bin/jq %s", providedJson, query)
-	outputBytes, execErr := common.ExecuteCommand(request, nil, "/bin/bash", "-c", cmd)
+	outputBytes, execErr := common.ExecuteCommand(e, request, nil, "/bin/bash", "-c", cmd)
 
 	if execErr != nil {
-		log.Error("Detected failure, building result! Error: ", execErr)
+    log.Error("Detected failure, building result! Error: ", execErr)
 
 		failureResult := common.CommandOutput{Output: string(outputBytes), Error: execErr.Error()}
 
@@ -42,7 +43,7 @@ func executeCoreJQAction(_ *plugin.ActionContext, request *plugin.ExecuteActionR
 
 }
 
-func executeCoreJPAction(_ *plugin.ActionContext, request *plugin.ExecuteActionRequest) ([]byte, error) {
+func executeCoreJPAction(e *execution.PrivateExecutionEnvironment, _ *plugin.ActionContext, request *plugin.ExecuteActionRequest) ([]byte, error) {
 	providedJson, ok := request.Parameters[jsonKey]
 	if !ok {
 		return nil, errors.New("no json provided for execution")
@@ -62,7 +63,7 @@ func executeCoreJPAction(_ *plugin.ActionContext, request *plugin.ExecuteActionR
 	}
 
 	cmd := fmt.Sprintf("/bin/echo '%s' | /bin/jp %s%s", providedJson, unquoted, query)
-	output, err := common.ExecuteCommand(request, nil, "/bin/bash", "-c", cmd)
+	output, err := common.ExecuteCommand(e, request, nil, "/bin/bash", "-c", cmd)
 
 	if err != nil {
 		return common.GetCommandFailureResponse(output, err)

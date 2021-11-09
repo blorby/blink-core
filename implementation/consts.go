@@ -9,6 +9,6 @@ const (
 	mailSubjectKey = "subject"
 	mailContentKey = "content"
 
-	pythonRunnerPath = "python/runner.py"
-	nodejsRunnerPath = "nodejs/runner.js"
+	pythonRunnerPath = "/blink-core/python/runner.py"
+	nodejsRunnerPath = "/blink-core/nodejs/runner.js"
 )

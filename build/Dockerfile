@@ -86,9 +86,10 @@ RUN apt-get update && \
     rm -rf /var/lib/apt/lists/* && \
     setcap cap_ipc_lock= /usr/bin/vault
 
+RUN mkdir -m 777 /executions
+RUN groupadd core
+RUN chgrp -R core /executions
+
 # Expose the gRPC port.
 EXPOSE 1337
-
-RUN chmod a+x blink-core
-
 ENTRYPOINT ./blink-core

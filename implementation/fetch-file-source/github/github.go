@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/blinkops/blink-core/common"
+	"github.com/blinkops/blink-core/implementation/execution"
 	"github.com/blinkops/blink-core/implementation/fetch-file-source"
 	"github.com/blinkops/blink-sdk/plugin"
 )
@@ -25,14 +26,14 @@ func CheckForConnection(ctx *plugin.ActionContext) bool {
 	return true
 }
 
-func FetchFile(ctx *plugin.ActionContext, request *plugin.ExecuteActionRequest) ([]byte, error) {
+func FetchFile(e *execution.PrivateExecutionEnvironment, ctx *plugin.ActionContext, request *plugin.ExecuteActionRequest) ([]byte, error) {
 	fileUrl, err := fetch_file_source.GetFileUrl(request)
 
 	if err != nil {
 		return nil, err
 	}
 
-	destination, err := fetch_file_source.GetFileDestination(fileUrl, request, paramDelimiter)
+	destination, err := fetch_file_source.GetFileDestination(e, fileUrl, request, paramDelimiter)
 
 	token, err := getConnnection(ctx)
 
@@ -41,7 +42,7 @@ func FetchFile(ctx *plugin.ActionContext, request *plugin.ExecuteActionRequest) 
 	}
 
 	tokenHeader := fmt.Sprintf(headerAuthorization, token)
-	output, err := common.ExecuteCommand(request, nil, "/usr/bin/curl", "-H", tokenHeader, "-o", destination, fileUrl)
+	output, err := common.ExecuteCommand(e, request, nil, "/usr/bin/curl", "-H", tokenHeader, "-o", destination, fileUrl)
 
 	if err != nil {
 		return common.GetCommandFailureResponse(output, err)

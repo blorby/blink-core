@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/blinkops/blink-core/common"
+	"github.com/blinkops/blink-core/implementation/execution"
 	"github.com/blinkops/blink-sdk/plugin"
 	"github.com/blinkops/blink-sdk/plugin/connections"
 	log "github.com/sirupsen/logrus"
@@ -30,7 +31,7 @@ func getConnectionsAsEnvVariables(ctxConnections map[string]connections.Connecti
 	return resolvedConnections
 }
 
-func executeCoreBashAction(ctx *plugin.ActionContext, request *plugin.ExecuteActionRequest) ([]byte, error) {
+func executeCoreBashAction(execution *execution.PrivateExecutionEnvironment, ctx *plugin.ActionContext, request *plugin.ExecuteActionRequest) ([]byte, error) {
 	code, ok := request.Parameters[codeKey]
 	if !ok {
 		return nil, errors.New("no code provided for execution")
@@ -39,7 +40,7 @@ func executeCoreBashAction(ctx *plugin.ActionContext, request *plugin.ExecuteAct
 	environmentVariables := os.Environ()
 	environmentVariables = append(environmentVariables, getConnectionsAsEnvVariables(ctx.GetAllConnections())...)
 
-	output, err := common.ExecuteCommand(request, environmentVariables, "/bin/bash", "-c", fmt.Sprintf("%s", code))
+	output, err := common.ExecuteCommand(execution, request, environmentVariables, "/bin/bash", "-c", fmt.Sprintf("%s", code))
 	if err != nil {
 		return common.GetCommandFailureResponse(output, err)
 	}

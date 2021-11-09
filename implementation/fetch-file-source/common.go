@@ -3,6 +3,7 @@ package fetch_file_source
 import (
 	"errors"
 	"github.com/blinkops/blink-core/common"
+	"github.com/blinkops/blink-core/implementation/execution"
 	"github.com/blinkops/blink-sdk/plugin"
 	log "github.com/sirupsen/logrus"
 	"os"
@@ -18,13 +19,13 @@ const (
 	defaultParamDelimiter = "?"
 )
 
-func GetFileDestination(fileUrl string, request *plugin.ExecuteActionRequest, paramDelimiter string) (string, error) {
+func GetFileDestination(e *execution.PrivateExecutionEnvironment, fileUrl string, request *plugin.ExecuteActionRequest, paramDelimiter string) (string, error) {
 	destination, ok := request.Parameters[fetchFileDestination]
 
 	if !ok {
 		destination = getCurrentDirectoryPath()
 	} else {
-		if _, err := common.ExecuteCommand(request, nil, "/bin/mkdir", "-p", destination); err != nil {
+		if _, err := common.ExecuteCommand(e, request, nil, "/bin/mkdir", "-p", destination); err != nil {
 			log.Debugf("Failed to create requested destination dir: %s", destination)
 			destination = getCurrentDirectoryPath()
 		}

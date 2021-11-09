@@ -1,17 +1,20 @@
 package implementation
 
 import (
-	"errors"
+	"github.com/blinkops/blink-core/implementation/execution"
 	"github.com/blinkops/blink-sdk/plugin"
 	"github.com/blinkops/blink-sdk/plugin/actions"
 	"github.com/blinkops/blink-sdk/plugin/config"
 	"github.com/blinkops/blink-sdk/plugin/connections"
 	description2 "github.com/blinkops/blink-sdk/plugin/description"
+	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"path"
 )
 
-type ActionHandler func(ctx *plugin.ActionContext, request *plugin.ExecuteActionRequest) ([]byte, error)
+var errActionNotFound = errors.New("Action not found")
+
+type ActionHandler func(execution *execution.PrivateExecutionEnvironment, ctx *plugin.ActionContext, request *plugin.ExecuteActionRequest) ([]byte, error)
 
 type CorePlugin struct {
 	description      plugin.Description
@@ -29,19 +32,55 @@ func (p *CorePlugin) GetActions() []plugin.Action {
 	return p.actions
 }
 
+func (p *CorePlugin) TryRouteExecutionRelatedAction(actionName string, request *plugin.ExecuteActionRequest) ([]byte, error) {
+
+	switch actionName {
+	case execution.StopExecutionSessionAction:
+		return execution.StopPrivateExecution(request)
+	default:
+		break
+	}
+
+	return nil, errActionNotFound
+}
+
 func (p *CorePlugin) ExecuteAction(ctx *plugin.ActionContext, request *plugin.ExecuteActionRequest) (*plugin.ExecuteActionResponse, error) {
 	log.Debugf("Executing action: %v\n Context: %v", *request, ctx.GetAllContextEntries())
 
-	actionHandler, ok := p.supportedActions[request.Name]
-	if !ok {
-		return nil, errors.New("action is not supported: " + request.Name)
+	resultBytes, err := p.TryRouteExecutionRelatedAction(request.Name, request)
+	if err == errActionNotFound {
+
+		executionId := ctx.GetAllContextEntries()["execution_id"]
+		if executionId == nil {
+			return nil, errors.New("Execution id is missing from context")
+		}
+
+		executionIdCasted, ok := executionId.(string)
+		if !ok {
+			return nil, errors.New("Execution id is not a string...")
+		}
+
+		session, err := execution.AcquirePrivateExecutionSession(executionIdCasted)
+		if err != nil {
+			return nil, err
+		}
+
+		actionHandler, ok := p.supportedActions[request.Name]
+		if !ok {
+			return nil, errors.New("action is not supported: " + request.Name)
+		}
+
+		resultBytes, err = actionHandler(session, ctx, request)
+		if err != nil {
+			log.Error("Failed executing action, err: ", err)
+			return nil, err
+		}
 	}
 
-	resultBytes, err := actionHandler(ctx, request)
-	if err != nil {
-		log.Error("Failed executing action, err: ", err)
+	if err != nil && err != errActionNotFound {
 		return nil, err
 	}
+
 	log.Debugf("Finished executing action: %v", request)
 
 	if len(resultBytes) > 0 && resultBytes[len(resultBytes)-1] == '\n' {

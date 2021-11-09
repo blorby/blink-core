@@ -4,13 +4,14 @@ import (
 	"encoding/json"
 	"errors"
 	"github.com/blinkops/blink-core/common"
+	"github.com/blinkops/blink-core/implementation/execution"
 	"github.com/blinkops/blink-sdk/plugin"
 	"github.com/blinkops/blink-sdk/plugin/connections"
 	log "github.com/sirupsen/logrus"
 	"os"
 )
 
-func executeCoreNodejsAction(ctx *plugin.ActionContext, request *plugin.ExecuteActionRequest) ([]byte, error) {
+func executeCoreNodejsAction(e *execution.PrivateExecutionEnvironment, ctx *plugin.ActionContext, request *plugin.ExecuteActionRequest) ([]byte, error) {
 
 	code, ok := request.Parameters[codeKey]
 	if !ok {
@@ -29,13 +30,14 @@ func executeCoreNodejsAction(ctx *plugin.ActionContext, request *plugin.ExecuteA
 		return nil, err
 	}
 
-	filePath, err := common.WriteToTempFile(rawJsonBytes, "blink-js-")
+	filePath, err := e.WriteToTempFile(rawJsonBytes, "blink-js-")
 	if err != nil {
 		return nil, err
 	}
+
 	defer func(name string) {_ = os.Remove(name) }(filePath)
 
-	output, err := common.ExecuteCommand(request, nil, "/usr/bin/node", nodejsRunnerPath, "--input", filePath)
+	output, err := common.ExecuteCommand(e, request, nil, "/usr/bin/node", nodejsRunnerPath, "--input", filePath)
 
 	if err != nil {
 		return common.GetCommandFailureResponse(output, err)
