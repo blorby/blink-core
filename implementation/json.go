@@ -26,7 +26,7 @@ func executeCoreJQAction(e *execution.PrivateExecutionEnvironment, _ *plugin.Act
 	outputBytes, execErr := common.ExecuteCommand(e, request, nil, "/bin/bash", "-c", cmd)
 
 	if execErr != nil {
-    log.Error("Detected failure, building result! Error: ", execErr)
+		log.Error("Detected failure, building result! Error: ", execErr)
 
 		failureResult := common.CommandOutput{Output: string(outputBytes), Error: execErr.Error()}
 

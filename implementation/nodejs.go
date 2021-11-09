@@ -35,7 +35,7 @@ func executeCoreNodejsAction(e *execution.PrivateExecutionEnvironment, ctx *plug
 		return nil, err
 	}
 
-	defer func(name string) {_ = os.Remove(name) }(filePath)
+	defer func(name string) { _ = os.Remove(name) }(filePath)
 
 	output, err := common.ExecuteCommand(e, request, nil, "/usr/bin/node", nodejsRunnerPath, "--input", filePath)
 

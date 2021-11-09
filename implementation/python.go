@@ -34,10 +34,10 @@ func executeCorePythonAction(execution *execution.PrivateExecutionEnvironment, c
 	if err != nil {
 		return nil, err
 	}
-	defer func(name string) {_ = os.Remove(name) }(filePath)
+	defer func(name string) { _ = os.Remove(name) }(filePath)
 
 	output, err := common.ExecuteCommand(execution, request, nil, "/bin/python", pythonRunnerPath, "--input", filePath)
-	
+
 	resultJson := struct {
 		Context map[string]interface{} `json:"context"`
 		Log     string                 `json:"log"`
