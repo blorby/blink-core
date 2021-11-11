@@ -224,12 +224,6 @@ func executeCoreTerraFormAction(ctx *plugin.ActionContext, request *plugin.Execu
 			return nil, errors.New("connection with terraform or aws is missing from action context")
 		}
 
-		region, ok := request.Parameters[regionParameterName]
-		if !ok {
-			region = "us-east-1"
-		}
-		environment = append(environment, fmt.Sprintf("%s=%v", regionEnvironmentVariable, region))
-
 		m := convertInterfaceMapToStringMap(awsCredentials)
 
 		for key, value := range m {
