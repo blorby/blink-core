@@ -214,19 +214,37 @@ func executeCoreVaultAction(ctx *plugin.ActionContext, request *plugin.ExecuteAc
 }
 
 func executeCoreTerraFormAction(ctx *plugin.ActionContext, request *plugin.ExecuteActionRequest) ([]byte, error) {
+	var environment environmentVariables
+
+	// Use either TerraForm or AWS credentials
 	credentials, err := ctx.GetCredentials("terraform")
 	if err != nil {
-		return nil, err
-	}
+		awsCredentials, err := ctx.GetCredentials("aws")
+		if err != nil {
+			return nil, errors.New("connection with terraform or aws is missing from action context")
+		}
 
-	token, ok := credentials[terraformToken]
-	if !ok {
-		return nil, errors.New("connection to terraform is invalid")
-	}
+		m := convertInterfaceMapToStringMap(awsCredentials)
 
-	apiServerURL, ok := credentials[terraformAddress]
-	if !ok {
-		return nil, errors.New("connection to terraform is invalid")
+		for key, value := range m {
+			environment = append(environment, fmt.Sprintf("%s=%v", strings.ToUpper(key), value))
+		}
+	} else {
+		token, ok := credentials[terraformToken]
+		if !ok {
+			return nil, errors.New("connection to terraform is invalid")
+		}
+
+		apiServerURL, ok := credentials[terraformAddress]
+		if !ok {
+			return nil, errors.New("connection to terraform is invalid")
+		}
+
+		// Create credentials file if it doesn't exist and write the user's credentials to it
+		output, err := createTerraFormCredentialsFile(apiServerURL, token)
+		if err != nil {
+			return output, err
+		}
 	}
 
 	command, ok := request.Parameters[commandParameterName]
@@ -234,26 +252,13 @@ func executeCoreTerraFormAction(ctx *plugin.ActionContext, request *plugin.Execu
 		return nil, errors.New("command to terraform wasn't provided")
 	}
 
-	//if !strings.HasPrefix(command, "terraform") {
-	//	return nil, errors.New("terraform commands must start with \"terraform\" prefix")
-	//}
-
 	// Validate the command to check that it doesn't require input, since it can't be supplied through the cli
 	output, err := validateTerraFormCommand(command)
 	if err != nil {
 		return output, err
 	}
 
-	// Create credentials file if it doesn't exist and write the user's credentials to it
-	output, err = createTerraFormCredentialsFile(apiServerURL, token)
-	if err != nil {
-		return output, err
-	}
-
-	environment := environmentVariables{
-		fmt.Sprintf("%s=%s", terraformAddress, apiServerURL),
-		fmt.Sprintf("PATH=%s", os.Getenv("PATH")),
-	}
+	environment = append(environment, fmt.Sprintf("PATH=%s", os.Getenv("PATH")))
 
 	// Execute the user's command
 	output, err = common.ExecuteBash(request, environment, command)
