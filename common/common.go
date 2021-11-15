@@ -22,7 +22,7 @@ func ExecuteBash(request *plugin.ExecuteActionRequest, environment []string, cmd
 
 func ExecuteCommand(request *plugin.ExecuteActionRequest, environment []string, name string, args ...string) ([]byte, error) {
 
-	commandFinished := make (chan struct{})
+	commandFinished := make(chan struct{})
 	command := exec.Command(
 		name,
 		args...)
@@ -45,10 +45,10 @@ func ExecuteCommand(request *plugin.ExecuteActionRequest, environment []string, 
 		// timeout goroutine
 		go func() {
 			select {
-			case <- time.After(time.Duration(request.Timeout) * time.Second):
+			case <-time.After(time.Duration(request.Timeout) * time.Second):
 				syscall.Kill(-command.Process.Pid, syscall.SIGKILL)
 				timedOut = true
-			case <- commandFinished:
+			case <-commandFinished:
 			}
 		}()
 	}
@@ -73,14 +73,7 @@ func ExecuteCommand(request *plugin.ExecuteActionRequest, environment []string, 
 }
 
 func GetCommandFailureResponse(output []byte, err error) ([]byte, error) {
-	errorAsString := ""
-	if len(output) > 0 {
-		errorAsString += string(output) + " - "
-	}
-
-	errorAsString += "error: " + err.Error()
-
-	return nil, errors.New(errorAsString)
+	return output, err
 }
 
 func WriteToTempFile(bytes []byte, prefix string) (string, error) {
