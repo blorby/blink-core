@@ -72,10 +72,6 @@ func ExecuteCommand(request *plugin.ExecuteActionRequest, environment []string, 
 	return outputBytes, execErr
 }
 
-func GetCommandFailureResponse(output []byte, err error) ([]byte, error) {
-	return output, err
-}
-
 func WriteToTempFile(bytes []byte, prefix string) (string, error) {
 	file, err := ioutil.TempFile("/tmp", prefix)
 	if err != nil {

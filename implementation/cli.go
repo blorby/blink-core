@@ -80,7 +80,7 @@ func executeCoreAWSAction(ctx *plugin.ActionContext, request *plugin.ExecuteActi
 	environment = append(environment, fmt.Sprintf("%s=%v", regionEnvironmentVariable, region))
 	output, err := common.ExecuteCommand(request, environment, "/bin/bash", "-c", command)
 	if err != nil {
-		return common.GetCommandFailureResponse(output, err)
+		return output, err
 	}
 
 	return output, nil
@@ -104,7 +104,7 @@ func executeCoreGITAction(ctx *plugin.ActionContext, request *plugin.ExecuteActi
 
 	output, err := common.ExecuteCommand(request, environment, "/bin/bash", "-c", command)
 	if err != nil {
-		return common.GetCommandFailureResponse(output, err)
+		return output, err
 	}
 
 	return output, nil
@@ -142,7 +142,7 @@ func executeCoreKubernetesAction(ctx *plugin.ActionContext, request *plugin.Exec
 	pathToKubeConfig := fmt.Sprintf("%s/config", pathToKubeConfigDirectory)
 
 	if output, err := common.ExecuteCommand(nil, nil, "/bin/mkdir", "-p", pathToKubeConfigDirectory); err != nil {
-		return common.GetCommandFailureResponse(output, err)
+		return output, err
 	}
 
 	defer func() {
@@ -162,12 +162,12 @@ func executeCoreKubernetesAction(ctx *plugin.ActionContext, request *plugin.Exec
 	}
 
 	if output, err := initKubernetesEnvironment(environment, fmt.Sprintf("%s", bearerToken), fmt.Sprintf("%s", apiServerURL), verify); err != nil {
-		return common.GetCommandFailureResponse(output, err)
+		return output, err
 	}
 
 	output, err := common.ExecuteBash(request, environment, command)
 	if err != nil {
-		return common.GetCommandFailureResponse(output, err)
+		return output, err
 	}
 
 	return output, nil
@@ -201,13 +201,13 @@ func executeCoreVaultAction(ctx *plugin.ActionContext, request *plugin.ExecuteAc
 
 	// RUN vault login to connect to the vault at the address provided by the user in the connection.
 	if output, err := common.ExecuteCommand(nil, environment, "/usr/bin/vault", "login", token.(string)); err != nil {
-		return common.GetCommandFailureResponse(output, err)
+		return output, err
 	}
 
 	// execute the user command
 	output, err := common.ExecuteBash(request, environment, command)
 	if err != nil {
-		return common.GetCommandFailureResponse(output, err)
+		return output, err
 	}
 
 	return output, nil
@@ -267,7 +267,7 @@ func executeCoreTerraFormAction(ctx *plugin.ActionContext, request *plugin.Execu
 			return nil, errors.New("terraform commands must start with \"terraform\" prefix")
 		}
 
-		_, commandFailureResponse := common.GetCommandFailureResponse(output, err)
+		_, commandFailureResponse := output, err
 
 		// Replace characters which make the output unreadable
 		outputStr := fixTerraFormOutput(commandFailureResponse.Error())
@@ -334,7 +334,7 @@ func executeCoreGoogleCloudAction(ctx *plugin.ActionContext, request *plugin.Exe
 	pathToConfig := fmt.Sprintf("%s/config", pathToConfigDirectory)
 
 	if output, err := common.ExecuteCommand(nil, nil, "/bin/mkdir", "-p", pathToConfigDirectory); err != nil {
-		return common.GetCommandFailureResponse(output, err)
+		return output, err
 	}
 
 	defer func() {
@@ -349,12 +349,12 @@ func executeCoreGoogleCloudAction(ctx *plugin.ActionContext, request *plugin.Exe
 	}
 
 	if err := initGoogleCloudEnvironment(temporaryPath, fmt.Sprintf("%s", gcpCredentials)); err != nil {
-		return common.GetCommandFailureResponse(nil, err)
+		return nil, err
 	}
 
 	output, err := common.ExecuteCommand(request, environment, "/bin/bash", "-c", command)
 	if err != nil {
-		return common.GetCommandFailureResponse(output, err)
+		return output, err
 	}
 
 	return output, nil
@@ -388,12 +388,12 @@ func executeCoreAzureAction(ctx *plugin.ActionContext, request *plugin.ExecuteAc
 
 	loginCmd := fmt.Sprintf("login --service-principal -u %s -p %s --tenant %s", appId, clientSecret, tenantId)
 	if output, err := common.ExecuteCommand(request, environmentVariables{}, "/bin/az", strings.Split(loginCmd, " ")...); err != nil {
-		return common.GetCommandFailureResponse(output, err)
+		return output, err
 	}
 
 	output, err := common.ExecuteCommand(request, environmentVariables{}, "/bin/bash", "-c", command)
 	if err != nil {
-		return common.GetCommandFailureResponse(output, err)
+		return output, err
 	}
 
 	return output, nil
