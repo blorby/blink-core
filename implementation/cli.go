@@ -81,7 +81,7 @@ func executeCoreAWSAction(e *execution.PrivateExecutionEnvironment, ctx *plugin.
 	environment = append(environment, fmt.Sprintf("%s=%v", regionEnvironmentVariable, region))
 	output, err := common.ExecuteCommand(e, request, environment, "/bin/bash", "-c", command)
 	if err != nil {
-		return common.GetCommandFailureResponse(output, err)
+		return output, err
 	}
 
 	return output, nil
@@ -105,7 +105,7 @@ func executeCoreGITAction(e *execution.PrivateExecutionEnvironment, ctx *plugin.
 
 	output, err := common.ExecuteCommand(e, request, environment, "/bin/bash", "-c", command)
 	if err != nil {
-		return common.GetCommandFailureResponse(output, err)
+		return output, err
 	}
 
 	return output, nil
@@ -164,12 +164,12 @@ func executeCoreKubernetesAction(e *execution.PrivateExecutionEnvironment, ctx *
 	}
 
 	if output, err := initKubernetesEnvironment(e, environment, fmt.Sprintf("%s", bearerToken), fmt.Sprintf("%s", apiServerURL), verify); err != nil {
-		return common.GetCommandFailureResponse(output, err)
+		return output, err
 	}
 
 	output, err := common.ExecuteBash(e, request, environment, command)
 	if err != nil {
-		return common.GetCommandFailureResponse(output, err)
+		return output, err
 	}
 
 	return output, nil
@@ -203,13 +203,13 @@ func executeCoreVaultAction(e *execution.PrivateExecutionEnvironment, ctx *plugi
 
 	// RUN vault login to connect to the vault at the address provided by the user in the connection.
 	if output, err := common.ExecuteCommand(e, nil, environment, "/usr/bin/vault", "login", token.(string)); err != nil {
-		return common.GetCommandFailureResponse(output, err)
+		return output, err
 	}
 
 	// execute the user command
 	output, err := common.ExecuteBash(e, request, environment, command)
 	if err != nil {
-		return common.GetCommandFailureResponse(output, err)
+		return output, err
 	}
 
 	return output, nil
@@ -279,7 +279,7 @@ func executeCoreTerraFormAction(e *execution.PrivateExecutionEnvironment, ctx *p
 			return nil, errors.New("terraform commands must start with \"terraform\" prefix")
 		}
 
-		_, commandFailureResponse := common.GetCommandFailureResponse(output, err)
+		_, commandFailureResponse := output, err
 
 		// Replace characters which make the output unreadable
 		outputStr := fixTerraFormOutput(commandFailureResponse.Error())
@@ -359,12 +359,12 @@ func executeCoreGoogleCloudAction(e *execution.PrivateExecutionEnvironment, ctx 
 	}
 
 	if err := initGoogleCloudEnvironment(e, temporaryPath, fmt.Sprintf("%s", gcpCredentials)); err != nil {
-		return common.GetCommandFailureResponse(nil, err)
+		return nil, err
 	}
 
 	output, err := common.ExecuteCommand(e, request, environment, "/bin/bash", "-c", command)
 	if err != nil {
-		return common.GetCommandFailureResponse(output, err)
+		return output, err
 	}
 
 	return output, nil
@@ -398,12 +398,12 @@ func executeCoreAzureAction(e *execution.PrivateExecutionEnvironment, ctx *plugi
 
 	loginCmd := fmt.Sprintf("login --service-principal -u %s -p %s --tenant %s", appId, clientSecret, tenantId)
 	if output, err := common.ExecuteCommand(e, request, environmentVariables{}, "/bin/az", strings.Split(loginCmd, " ")...); err != nil {
-		return common.GetCommandFailureResponse(output, err)
+		return output, err
 	}
 
 	output, err := common.ExecuteCommand(e, request, environmentVariables{}, "/bin/bash", "-c", command)
 	if err != nil {
-		return common.GetCommandFailureResponse(output, err)
+		return output, err
 	}
 
 	return output, nil

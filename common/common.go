@@ -24,7 +24,7 @@ func ExecuteBash(execution *execution.PrivateExecutionEnvironment, request *plug
 
 func ExecuteCommand(execution *execution.PrivateExecutionEnvironment, request *plugin.ExecuteActionRequest, environment []string, name string, args ...string) ([]byte, error) {
 
-	commandFinished := make (chan struct{})
+	commandFinished := make(chan struct{})
 	command := exec.Command(
 		name,
 		args...)
@@ -55,10 +55,10 @@ func ExecuteCommand(execution *execution.PrivateExecutionEnvironment, request *p
 		// timeout goroutine
 		go func() {
 			select {
-			case <- time.After(time.Duration(request.Timeout) * time.Second):
+			case <-time.After(time.Duration(request.Timeout) * time.Second):
 				syscall.Kill(-command.Process.Pid, syscall.SIGKILL)
 				timedOut = true
-			case <- commandFinished:
+			case <-commandFinished:
 			}
 		}()
 	}
@@ -82,16 +82,7 @@ func ExecuteCommand(execution *execution.PrivateExecutionEnvironment, request *p
 	return outputBytes, execErr
 }
 
-func GetCommandFailureResponse(output []byte, err error) ([]byte, error) {
-	errorAsString := ""
-	if len(output) > 0 {
-		errorAsString += string(output) + " - "
-	}
 
-	errorAsString += "error: " + err.Error()
-
-	return nil, errors.New(errorAsString)
-}
 
 func WriteToTempFile(execution *execution.PrivateExecutionEnvironment, bytes []byte, prefix string) (string, error) {
 	file, err := ioutil.TempFile(execution.GetTempDirectory(), prefix)

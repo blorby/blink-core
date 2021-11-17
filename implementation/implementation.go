@@ -87,8 +87,13 @@ func (p *CorePlugin) ExecuteAction(ctx *plugin.ActionContext, request *plugin.Ex
 		resultBytes = resultBytes[:len(resultBytes)-1]
 	}
 
+	errorCode := int64(0)
+	if err != nil {
+		errorCode = 1
+	}
+
 	return &plugin.ExecuteActionResponse{
-		ErrorCode: 0,
+		ErrorCode: errorCode,
 		Result:    resultBytes,
 	}, nil
 }

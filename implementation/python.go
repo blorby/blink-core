@@ -46,7 +46,7 @@ func executeCorePythonAction(execution *execution.PrivateExecutionEnvironment, c
 	}{}
 
 	if err != nil {
-		return common.GetCommandFailureResponse(output, err)
+		return output, err
 	}
 
 	err = json.Unmarshal(output, &resultJson)
@@ -56,7 +56,7 @@ func executeCorePythonAction(execution *execution.PrivateExecutionEnvironment, c
 	}
 
 	if resultJson.Error != "" {
-		return common.GetCommandFailureResponse([]byte(resultJson.Output), errors.New(resultJson.Error))
+		return []byte(resultJson.Output), errors.New(resultJson.Error)
 	}
 
 	ctx.ReplaceContext(resultJson.Context)

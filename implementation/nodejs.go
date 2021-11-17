@@ -40,7 +40,7 @@ func executeCoreNodejsAction(e *execution.PrivateExecutionEnvironment, ctx *plug
 	output, err := common.ExecuteCommand(e, request, nil, "/usr/bin/node", nodejsRunnerPath, "--input", filePath)
 
 	if err != nil {
-		return common.GetCommandFailureResponse(output, err)
+		return output, err
 	}
 
 	return output, nil
