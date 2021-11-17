@@ -78,11 +78,12 @@ RUN echo "deb [signed-by=/usr/share/keyrings/cloud.google.gpg] http://packages.c
     apt-get install -y google-cloud-sdk
 
 
-# Install Vault cli.
+# Install Vault and TerraForm cli.
 RUN curl -fsSL https://apt.releases.hashicorp.com/gpg | apt-key add -
 RUN apt-get update && \
     apt-add-repository "deb [arch=amd64] https://apt.releases.hashicorp.com $(lsb_release -cs) main" && \
     apt-get install vault && \
+    apt-get install terraform && \
     rm -rf /var/lib/apt/lists/* && \
     setcap cap_ipc_lock= /usr/bin/vault
 

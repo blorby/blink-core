@@ -8,6 +8,8 @@ import (
 	"github.com/aws/aws-sdk-go/service/sts"
 	"github.com/blinkops/blink-core/implementation/execution"
 	"os"
+	"path"
+	"regexp"
 	"strings"
 
 	"github.com/blinkops/blink-core/common"
@@ -26,6 +28,8 @@ const (
 	regionEnvironmentVariable = "AWS_DEFAULT_REGION"
 	vaultAddress              = "VAULT_ADDR"
 	vaultToken                = "VAULT_TOKEN"
+	terraformAddress          = "TERRAFORM_ADDR"
+	terraformToken            = "TERRAFORM_TOKEN"
 	awsAccessKeyId            = "aws_access_key_id"
 	awsSecretAccessKey        = "aws_secret_access_key"
 	awsSessionToken           = "aws_session_token"
@@ -211,6 +215,81 @@ func executeCoreVaultAction(e *execution.PrivateExecutionEnvironment, ctx *plugi
 	return output, nil
 }
 
+func executeCoreTerraFormAction(e *execution.PrivateExecutionEnvironment, ctx *plugin.ActionContext, request *plugin.ExecuteActionRequest) ([]byte, error) {
+	var environment environmentVariables
+
+	// Use either TerraForm or AWS credentials
+	credentials, err := ctx.GetCredentials("terraform")
+	if err != nil {
+		awsCredentials, err := ctx.GetCredentials("aws")
+		if err != nil {
+			return nil, errors.New("connection with terraform or aws is missing from action context")
+		}
+
+		m := convertInterfaceMapToStringMap(awsCredentials)
+		for key, value := range m {
+			environment = append(environment, fmt.Sprintf("%s=%v", strings.ToUpper(key), value))
+		}
+
+	} else {
+		tokenRaw, ok := credentials[terraformToken]
+		if !ok {
+			return nil, errors.New("connection to terraform is invalid")
+		}
+
+		apiServerURLRaw, ok := credentials[terraformAddress]
+		if !ok {
+			return nil, errors.New("connection to terraform is invalid")
+		}
+
+		token, ok := tokenRaw.(string)
+		if !ok {
+			return nil, errors.New("Terraform token is not a string")
+		}
+
+		apiServerURL, ok := apiServerURLRaw.(string)
+		if !ok {
+			return nil, errors.New("Api server url is not a string")
+		}
+
+		// Create credentials file if it doesn't exist and write the user's credentials to it
+		err := createTerraFormCredentialsFile(e, apiServerURL, token)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	command, ok := request.Parameters[commandParameterName]
+	if !ok {
+		return nil, errors.New("command to terraform wasn't provided")
+	}
+
+	// Validate the command to check that it doesn't require input, since it can't be supplied through the cli
+	output, err := validateTerraFormCommand(command)
+	if err != nil {
+		return output, err
+	}
+
+	environment = append(environment, fmt.Sprintf("PATH=%s", os.Getenv("PATH")))
+
+	// Execute the user's command
+	output, err = common.ExecuteBash(e, request, environment, command)
+	if err != nil {
+		if strings.Contains(string(output), "Couldn't find an alternative") {
+			return nil, errors.New("terraform commands must start with \"terraform\" prefix")
+		}
+
+		_, commandFailureResponse := common.GetCommandFailureResponse(output, err)
+
+		// Replace characters which make the output unreadable
+		outputStr := fixTerraFormOutput(commandFailureResponse.Error())
+
+		return nil, errors.New(outputStr)
+	}
+
+	return []byte(fixTerraFormOutput(string(output))), nil
+}
+
 func executeCoreKubernetesApplyAction(e *execution.PrivateExecutionEnvironment, ctx *plugin.ActionContext, request *plugin.ExecuteActionRequest) ([]byte, error) {
 	_, err := ctx.GetCredentials("kubernetes")
 	if err != nil {
@@ -366,4 +445,74 @@ func initGoogleCloudEnvironment(e *execution.PrivateExecutionEnvironment, tempor
 	pathToGCPConfig := fmt.Sprintf("%s/config", pathToGCPConfigDirectory)
 
 	return e.WriteToFile(pathToGCPConfig, []byte(credentials))
+}
+
+func createTerraFormCredentialsFile(e *execution.PrivateExecutionEnvironment, apiServerURL string, token string) error {
+
+	// Create TerraForm credentials file
+	credentialsJsonPath := path.Join(e.GetTempDirectory(), ".terraform.d", "credentials.tfrc.json")
+	if _, err := os.Stat(credentialsJsonPath); errors.Is(err, os.ErrNotExist) {
+		err := os.Mkdir(path.Join(e.GetTempDirectory(), ".terraform.d"), 0644)
+		if err != nil {
+			return err
+		}
+		credentialsFile, err := os.Create(credentialsJsonPath)
+		if err != nil {
+			return err
+		}
+
+		defer credentialsFile.Close()
+
+		content := fmt.Sprintf(`{
+  "credentials": {
+    "%s": {
+      "token": "%s"
+    }
+  }
+}`, apiServerURL, token)
+
+		_, err = credentialsFile.WriteString(content)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func validateTerraFormCommand(command string) ([]byte, error) {
+	if strings.HasPrefix(command, "destroy") {
+		return nil, errors.New("please use \"apply -destroy -auto-approve\" in order to auto approve your changes")
+	}
+
+	autoApplyExists := false
+	destroyExists := false
+	if strings.HasPrefix(command, "apply") {
+		for _, field := range strings.Fields(command) {
+			if field == "-auto-approve" {
+				autoApplyExists = true
+			} else if field == "-destroy" {
+				destroyExists = true
+			}
+		}
+
+		if !autoApplyExists {
+			if !destroyExists {
+				return nil, errors.New("please use \"apply -auto-approve\" in order to auto approve your changes")
+			}
+			return nil, errors.New("please use \"apply -destroy -auto-approve\" in order to auto approve your changes")
+		}
+	}
+
+	return nil, nil
+}
+
+func fixTerraFormOutput(output string) string {
+	exp1 := regexp.MustCompile("\\[[0-9]+m")
+	exp2 := regexp.MustCompile("[╷│╵\u001B]+?")
+	exp3 := regexp.MustCompile(" +")
+	output = exp1.ReplaceAllString(output, "")
+	output = exp2.ReplaceAllString(output, "")
+	output = exp3.ReplaceAllString(output, " ")
+	return output
 }
