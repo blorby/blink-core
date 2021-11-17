@@ -24,7 +24,7 @@ func ExecuteBash(execution *execution.PrivateExecutionEnvironment, request *plug
 
 func ExecuteCommand(execution *execution.PrivateExecutionEnvironment, request *plugin.ExecuteActionRequest, environment []string, name string, args ...string) ([]byte, error) {
 
-	commandFinished := make (chan struct{})
+	commandFinished := make(chan struct{})
 	command := exec.Command(
 		name,
 		args...)
@@ -37,8 +37,8 @@ func ExecuteCommand(execution *execution.PrivateExecutionEnvironment, request *p
 
 	command.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 	command.SysProcAttr.Credential = &syscall.Credential{
-		Uid:         execution.GetExecutorUid(),
-		Gid:         execution.GetExecutorGid(),
+		Uid: execution.GetExecutorUid(),
+		Gid: execution.GetExecutorGid(),
 	}
 
 	log.Infof("Executing command %s as user (%d, %d, %s)", name, execution.GetExecutorUid(), execution.GetExecutorGid(), execution.GetTempDirectory())
@@ -55,10 +55,10 @@ func ExecuteCommand(execution *execution.PrivateExecutionEnvironment, request *p
 		// timeout goroutine
 		go func() {
 			select {
-			case <- time.After(time.Duration(request.Timeout) * time.Second):
+			case <-time.After(time.Duration(request.Timeout) * time.Second):
 				syscall.Kill(-command.Process.Pid, syscall.SIGKILL)
 				timedOut = true
-			case <- commandFinished:
+			case <-commandFinished:
 			}
 		}()
 	}
