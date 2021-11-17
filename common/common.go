@@ -3,9 +3,11 @@ package common
 import (
 	"errors"
 	"fmt"
+	"github.com/blinkops/blink-core/implementation/execution"
 	"github.com/blinkops/blink-sdk/plugin"
 	log "github.com/sirupsen/logrus"
 	"io/ioutil"
+	"os"
 	"os/exec"
 	"syscall"
 	"time"
@@ -16,22 +18,30 @@ type CommandOutput struct {
 	Error  string `json:"error"`
 }
 
-func ExecuteBash(request *plugin.ExecuteActionRequest, environment []string, cmd string) ([]byte, error) {
-	return ExecuteCommand(request, environment, "/bin/bash", "-c", cmd)
+func ExecuteBash(execution *execution.PrivateExecutionEnvironment, request *plugin.ExecuteActionRequest, environment []string, cmd string) ([]byte, error) {
+	return ExecuteCommand(execution, request, environment, "/bin/bash", "-c", cmd)
 }
 
-func ExecuteCommand(request *plugin.ExecuteActionRequest, environment []string, name string, args ...string) ([]byte, error) {
+func ExecuteCommand(execution *execution.PrivateExecutionEnvironment, request *plugin.ExecuteActionRequest, environment []string, name string, args ...string) ([]byte, error) {
 
 	commandFinished := make(chan struct{})
 	command := exec.Command(
 		name,
 		args...)
 
+	command.Dir = execution.GetTempDirectory()
+
 	if environment != nil {
 		command.Env = environment
 	}
 
 	command.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
+	command.SysProcAttr.Credential = &syscall.Credential{
+		Uid:         execution.GetExecutorUid(),
+		Gid:         execution.GetExecutorGid(),
+	}
+
+	log.Infof("Executing command %s as user (%d, %d, %s)", name, execution.GetExecutorUid(), execution.GetExecutorGid(), execution.GetTempDirectory())
 
 	// golang context with deadline kills the process but not the children, hence our own impl to kill all after timeout
 
@@ -72,8 +82,10 @@ func ExecuteCommand(request *plugin.ExecuteActionRequest, environment []string, 
 	return outputBytes, execErr
 }
 
-func WriteToTempFile(bytes []byte, prefix string) (string, error) {
-	file, err := ioutil.TempFile("/tmp", prefix)
+
+
+func WriteToTempFile(execution *execution.PrivateExecutionEnvironment, bytes []byte, prefix string) (string, error) {
+	file, err := ioutil.TempFile(execution.GetTempDirectory(), prefix)
 	if err != nil {
 		return "", err
 	}
@@ -89,5 +101,11 @@ func WriteToTempFile(bytes []byte, prefix string) (string, error) {
 	if err != nil {
 		return "", err
 	}
+
+	err = os.Chown(file.Name(), int(execution.GetExecutorUid()), int(execution.GetExecutorGid()))
+	if err != nil {
+		return "", err
+	}
+
 	return file.Name(), nil
 }

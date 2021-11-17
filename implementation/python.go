@@ -4,13 +4,14 @@ import (
 	"encoding/json"
 	"errors"
 	"github.com/blinkops/blink-core/common"
+	"github.com/blinkops/blink-core/implementation/execution"
 	"github.com/blinkops/blink-sdk/plugin"
 	"github.com/blinkops/blink-sdk/plugin/connections"
 	log "github.com/sirupsen/logrus"
 	"os"
 )
 
-func executeCorePythonAction(ctx *plugin.ActionContext, request *plugin.ExecuteActionRequest) ([]byte, error) {
+func executeCorePythonAction(execution *execution.PrivateExecutionEnvironment, ctx *plugin.ActionContext, request *plugin.ExecuteActionRequest) ([]byte, error) {
 
 	code, ok := request.Parameters[codeKey]
 	if !ok {
@@ -29,14 +30,14 @@ func executeCorePythonAction(ctx *plugin.ActionContext, request *plugin.ExecuteA
 		return nil, err
 	}
 
-	filePath, err := common.WriteToTempFile(rawJsonBytes, "blink-py-")
+	filePath, err := common.WriteToTempFile(execution, rawJsonBytes, ".temp-blink-py-")
 	if err != nil {
 		return nil, err
 	}
-	defer func(name string) {_ = os.Remove(name) }(filePath)
+	defer func(name string) { _ = os.Remove(name) }(filePath)
 
-	output, err := common.ExecuteCommand(request, nil, "/bin/python", pythonRunnerPath, "--input", filePath)
-	
+	output, err := common.ExecuteCommand(execution, request, nil, "/bin/python", pythonRunnerPath, "--input", filePath)
+
 	resultJson := struct {
 		Context map[string]interface{} `json:"context"`
 		Log     string                 `json:"log"`

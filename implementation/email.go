@@ -4,6 +4,7 @@ import (
 	"crypto/tls"
 	"errors"
 	"fmt"
+	"github.com/blinkops/blink-core/implementation/execution"
 	"github.com/blinkops/blink-sdk/plugin"
 	log "github.com/sirupsen/logrus"
 	gomail "gopkg.in/mail.v2"
@@ -24,7 +25,7 @@ func addAttachmentIfNeeded(request *plugin.ExecuteActionRequest, message *gomail
 	message.AttachReader(attachmentName, bodyReader)
 }
 
-func executeCoreMailAction(context *plugin.ActionContext, request *plugin.ExecuteActionRequest) ([]byte, error) {
+func executeCoreMailAction(_ *execution.PrivateExecutionEnvironment, context *plugin.ActionContext, request *plugin.ExecuteActionRequest) ([]byte, error) {
 	mailCredentials, err := context.GetCredentials("core-mail")
 	if err != nil {
 		err = fmt.Errorf("mail connection was not provided")
