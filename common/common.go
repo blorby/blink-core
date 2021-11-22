@@ -1,10 +1,10 @@
 package common
 
 import (
-	"errors"
 	"fmt"
 	"github.com/blinkops/blink-core/implementation/execution"
 	"github.com/blinkops/blink-sdk/plugin"
+	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"io/ioutil"
 	"os"
@@ -38,7 +38,7 @@ func ExecuteCommand(execution *execution.PrivateExecutionEnvironment, request *p
 
 	currentUser, err := user.Current()
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "failed getting current user: ")
 	}
 
 	if currentUser.Uid != fmt.Sprintf("%d", execution.GetExecutorUid()) {
