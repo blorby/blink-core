@@ -88,7 +88,7 @@ RUN apt-get update && \
     setcap cap_ipc_lock= /usr/bin/vault
 
 # Create a directory where the executions will be saved.
-RUN mkdir -m 700 /executions
+RUN mkdir -m 711 /executions
 RUN groupadd core
 RUN chgrp -R core /executions
 

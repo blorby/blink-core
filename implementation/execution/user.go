@@ -35,6 +35,7 @@ func Sanitize(username string) string {
 
 func AddNewUser(u *User) (string, error) {
 
+	log.Infof("adding new user named %s", u.Name)
 	passwordBase, err := CreateRandom(randomPasswordLength)
 	if err != nil {
 		return "", err

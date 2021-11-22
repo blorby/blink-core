@@ -5,9 +5,9 @@ import (
 	"github.com/blinkops/blink-sdk/plugin"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
+	"golang.org/x/sys/unix"
 	"io/ioutil"
 	"os"
-	"os/exec"
 	"os/user"
 	"path"
 	"runtime"
@@ -233,10 +233,8 @@ func createExecutionSession(executionId string) (*user.User, error) {
 		return nil, errors.Wrap(err, "Failed to change user directory permissions: ")
 	}
 
-	err = exec.Command("umask", "077").Run()
-	if err != nil {
-		return nil, errors.Wrap(err, "Failed to set umask: ")
-	}
+	log.Infof("setting umask")
+	unix.Umask(077) // umask uses octal representation
 
 	return userInformation, nil
 }
