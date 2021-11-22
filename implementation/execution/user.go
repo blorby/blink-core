@@ -7,6 +7,7 @@ import (
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"os/exec"
+	"runtime"
 	"strings"
 )
 
@@ -63,6 +64,10 @@ func AddNewUser(u *User) (string, error) {
 }
 
 func RemoveUser(username string) error {
+	if runtime.GOOS != "linux" {
+		return nil
+	}
+
 	argUser := []string{"-r", username}
 	userCmd := exec.Command("userdel", argUser...)
 
