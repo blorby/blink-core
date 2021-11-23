@@ -5,10 +5,12 @@ import (
 	"github.com/blinkops/blink-sdk/plugin"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
+	"golang.org/x/sys/unix"
 	"io/ioutil"
 	"os"
 	"os/user"
 	"path"
+	"runtime"
 	"strconv"
 	"sync"
 )
@@ -147,7 +149,12 @@ func (ctrl *ExecutionController) DestroyExecutionSession(executionId string) err
 	}
 
 	// Will delete the directory we created too.
-	return RemoveUser(session.GetUserName())
+	err := RemoveUser(session.GetUserName())
+
+	ctrl.executionSessionsMutex.Lock()
+	defer ctrl.executionSessionsMutex.Unlock()
+	delete(ctrl.executionSessions, session.GetSessionId())
+	return err
 }
 
 func GetExecutionController() *ExecutionController {
@@ -169,8 +176,29 @@ func AcquirePrivateExecutionSession(executionId string) (*PrivateExecutionEnviro
 
 	log.Infof("Creating execution session for %s", executionId)
 
+	userInformation, err := createExecutionSession(executionId)
+	if err != nil {
+		return nil, err
+	}
+
+	session := &PrivateExecutionEnvironment{
+		SessionId: executionId,
+		User:      *userInformation,
+	}
+
+	log.Infof("Created user for private execution %v", *userInformation)
+
+	GetExecutionController().SaveExecutionSession(session)
+	return session, nil
+}
+
+func createExecutionSession(executionId string) (*user.User, error) {
+	if runtime.GOOS != "linux" {
+		currentUser, err := user.Current()
+		return currentUser, err
+	}
 	userDirectory := fmt.Sprintf("/executions/%s", executionId)
-	err := os.Mkdir(userDirectory, 0777)
+	err := os.Mkdir(userDirectory, 0700)
 	if err != nil {
 		return nil, errors.Wrap(err, "Failed to create user directory: ")
 	}
@@ -200,20 +228,15 @@ func AcquirePrivateExecutionSession(executionId string) (*PrivateExecutionEnviro
 		return nil, errors.Wrap(err, "Failed to change change ownership of  directory : ")
 	}
 
-	err = os.Chmod(userDirectory, 0777)
+	err = os.Chmod(userDirectory, 0700)
 	if err != nil {
 		return nil, errors.Wrap(err, "Failed to change user directory permissions: ")
 	}
 
-	session := &PrivateExecutionEnvironment{
-		SessionId: executionId,
-		User:      *userInformation,
-	}
+	log.Infof("setting umask")
+	unix.Umask(077) // umask uses octal representation
 
-	log.Infof("Created user for private execution %v", *userInformation)
-
-	GetExecutionController().SaveExecutionSession(session)
-	return session, nil
+	return userInformation, nil
 }
 
 func StopPrivateExecution(request *plugin.ExecuteActionRequest) ([]byte, error) {

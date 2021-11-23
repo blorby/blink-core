@@ -1,14 +1,15 @@
 package common
 
 import (
-	"errors"
 	"fmt"
 	"github.com/blinkops/blink-core/implementation/execution"
 	"github.com/blinkops/blink-sdk/plugin"
+	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"io/ioutil"
 	"os"
 	"os/exec"
+	"os/user"
 	"syscall"
 	"time"
 )
@@ -35,10 +36,17 @@ func ExecuteCommand(execution *execution.PrivateExecutionEnvironment, request *p
 		command.Env = environment
 	}
 
-	command.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
-	command.SysProcAttr.Credential = &syscall.Credential{
-		Uid: execution.GetExecutorUid(),
-		Gid: execution.GetExecutorGid(),
+	currentUser, err := user.Current()
+	if err != nil {
+		return nil, errors.Wrap(err, "failed getting current user: ")
+	}
+
+	if currentUser.Uid != fmt.Sprintf("%d", execution.GetExecutorUid()) {
+		command.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
+		command.SysProcAttr.Credential = &syscall.Credential{
+			Uid: execution.GetExecutorUid(),
+			Gid: execution.GetExecutorGid(),
+		}
 	}
 
 	log.Infof("Executing command %s as user (%d, %d, %s)", name, execution.GetExecutorUid(), execution.GetExecutorGid(), execution.GetTempDirectory())

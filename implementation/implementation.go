@@ -45,6 +45,14 @@ func (p *CorePlugin) TryRouteExecutionRelatedAction(actionName string, request *
 }
 
 func (p *CorePlugin) ExecuteAction(ctx *plugin.ActionContext, request *plugin.ExecuteActionRequest) (*plugin.ExecuteActionResponse, error) {
+	response, err := p.doExecuteAction(ctx, request)
+	if err != nil {
+		log.Error("Error executing action. ", err)
+	}
+	return response, err
+}
+
+func (p *CorePlugin) doExecuteAction(ctx *plugin.ActionContext, request *plugin.ExecuteActionRequest) (*plugin.ExecuteActionResponse, error) {
 	log.Debugf("Executing action: %v\n Context: %v", *request, ctx.GetAllContextEntries())
 
 	resultBytes, err := p.TryRouteExecutionRelatedAction(request.Name, request)
@@ -72,7 +80,6 @@ func (p *CorePlugin) ExecuteAction(ctx *plugin.ActionContext, request *plugin.Ex
 
 		resultBytes, err = actionHandler(session, ctx, request)
 		if err != nil {
-			log.Error("Failed executing action, err: ", err)
 			return nil, err
 		}
 	}
