@@ -9,6 +9,7 @@ import (
 	"github.com/blinkops/blink-core/implementation/execution"
 	"os"
 	"path"
+	"path/filepath"
 	"regexp"
 	"strings"
 
@@ -138,18 +139,16 @@ func executeCoreKubernetesAction(e *execution.PrivateExecutionEnvironment, ctx *
 	}
 
 	temporaryUUID := uuid.NewV4().String()
-	temporaryPath := fmt.Sprintf(e.GetTempDirectory(), temporaryUUID)
-	pathToKubeConfigDirectory := fmt.Sprintf("%s/.kube", temporaryPath)
-	pathToKubeConfig := fmt.Sprintf("%s/config", pathToKubeConfigDirectory)
-
-	err = e.CreateDirectory(pathToKubeConfigDirectory)
-	if err != nil {
+	temporaryPath := filepath.Join(e.GetTempDirectory(), temporaryUUID)
+	pathToKubeConfigDirectory := filepath.Join(temporaryPath, ".kube")
+	pathToKubeConfig := filepath.Join(pathToKubeConfigDirectory, "config")
+	if _, err = common.ExecuteCommand(e,nil, nil, "/bin/mkdir", "-p", pathToKubeConfigDirectory); err != nil {
 		return nil, errors2.Wrap(err, "Failed to create kube config directory")
 	}
 
 	defer func() {
 		// Delete kube config directory
-		if _, err := common.ExecuteCommand(e, nil, nil, "/bin/rm", "-r", temporaryPath); err != nil {
+		if _, err := common.ExecuteCommand(e, nil, nil, "/bin/rm", "-rf", temporaryPath); err != nil {
 			log.Errorf("failed to delete kube config credentials from temporary filesystem, error: %v", err)
 		}
 	}()
