@@ -16,10 +16,8 @@ RUN go install -v ./...
 FROM ubuntu:focal-20210416 AS plugin
 
 WORKDIR /blink-core
-COPY --from=builder /go/bin/blink-core .
 COPY config.yaml plugin.yaml python/requirements.txt ./
 COPY python python/
-COPY actions actions/
 COPY nodejs nodejs/
 
 ENV DEBIAN_FRONTEND="noninteractive"
@@ -60,14 +58,6 @@ RUN curl --silent --location "https://github.com/weaveworks/eksctl/releases/late
 RUN curl "https://amazon-eks.s3.us-west-2.amazonaws.com/1.20.4/2021-04-12/bin/linux/amd64/kubectl" -o "/usr/bin/kubectl" && \
     chmod +x /usr/bin/kubectl
 
-# Downloading azure cli
-RUN curl -sL https://packages.microsoft.com/keys/microsoft.asc | \
-    gpg --dearmor | \
-    tee /etc/apt/trusted.gpg.d/microsoft.gpg > /dev/null && \
-    echo "deb [arch=amd64] http://packages.microsoft.com/repos/azure-cli/ $(lsb_release -cs) main" | \
-    tee /etc/apt/sources.list.d/azure-cli.list && \
-    apt-get update -y && \
-    apt-get install -y azure-cli
 
 # Download google cloud cli
 RUN echo "deb [signed-by=/usr/share/keyrings/cloud.google.gpg] http://packages.cloud.google.com/apt cloud-sdk main" | \
@@ -77,8 +67,16 @@ RUN echo "deb [signed-by=/usr/share/keyrings/cloud.google.gpg] http://packages.c
     apt-get update -y && \
     apt-get install -y google-cloud-sdk
 
+# Downloading azure cli
+RUN curl -sL https://packages.microsoft.com/keys/microsoft.asc | \
+    gpg --dearmor | \
+    tee /etc/apt/trusted.gpg.d/microsoft.gpg > /dev/null && \
+    echo "deb [arch=amd64] http://packages.microsoft.com/repos/azure-cli/ $(lsb_release -cs) main" | \
+    tee /etc/apt/sources.list.d/azure-cli.list && \
+    apt-get update -y && \
+    apt-get install -y azure-cli
 
-# Install Vault and TerraForm cli.
+## Install Vault and TerraForm cli.
 RUN curl -fsSL https://apt.releases.hashicorp.com/gpg | apt-key add -
 RUN apt-get update && \
     apt-add-repository "deb [arch=amd64] https://apt.releases.hashicorp.com $(lsb_release -cs) main" && \
@@ -86,6 +84,10 @@ RUN apt-get update && \
     apt-get install terraform && \
     rm -rf /var/lib/apt/lists/* && \
     setcap cap_ipc_lock= /usr/bin/vault
+
+# keep this at the end to make better use of caching
+COPY --from=builder /go/bin/blink-core .
+COPY actions actions/
 
 # Create a directory where the executions will be saved.
 RUN mkdir -m 711 /executions
