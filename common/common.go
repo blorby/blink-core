@@ -2,7 +2,6 @@ package common
 
 import (
 	"fmt"
-	"github.com/blinkops/blink-core/implementation/execution"
 	"github.com/blinkops/blink-sdk/plugin"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
@@ -19,11 +18,17 @@ type CommandOutput struct {
 	Error  string `json:"error"`
 }
 
-func ExecuteBash(execution *execution.PrivateExecutionEnvironment, request *plugin.ExecuteActionRequest, environment []string, cmd string) ([]byte, error) {
+type Environment interface {
+	GetTempDirectory() string
+	GetExecutorUid() uint32
+	GetExecutorGid() uint32
+}
+
+func ExecuteBash(execution Environment, request *plugin.ExecuteActionRequest, environment []string, cmd string) ([]byte, error) {
 	return ExecuteCommand(execution, request, environment, "/bin/bash", "-c", cmd)
 }
 
-func ExecuteCommand(execution *execution.PrivateExecutionEnvironment, request *plugin.ExecuteActionRequest, environment []string, name string, args ...string) ([]byte, error) {
+func ExecuteCommand(execution Environment, request *plugin.ExecuteActionRequest, environment []string, name string, args ...string) ([]byte, error) {
 
 	commandFinished := make(chan struct{})
 	command := exec.Command(
@@ -101,7 +106,7 @@ func GetCommandFailureResponse(output []byte, err error) ([]byte, error) {
 	return nil, errors.New(errorAsString)
 }
 
-func WriteToTempFile(execution *execution.PrivateExecutionEnvironment, bytes []byte, prefix string) (string, error) {
+func WriteToTempFile(execution Environment, bytes []byte, prefix string) (string, error) {
 	file, err := ioutil.TempFile(execution.GetTempDirectory(), prefix)
 	if err != nil {
 		return "", err

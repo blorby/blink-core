@@ -1,7 +1,6 @@
 package implementation
 
 import (
-	"errors"
 	"fmt"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
@@ -9,14 +8,12 @@ import (
 	"github.com/blinkops/blink-core/implementation/execution"
 	"os"
 	"path"
-	"path/filepath"
 	"regexp"
 	"strings"
 
 	"github.com/blinkops/blink-core/common"
 	"github.com/blinkops/blink-sdk/plugin"
-	errors2 "github.com/pkg/errors"
-	uuid "github.com/satori/go.uuid"
+	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -138,12 +135,15 @@ func executeCoreKubernetesAction(e *execution.PrivateExecutionEnvironment, ctx *
 		return nil, errors.New("command to K8S CLI wasn't provided")
 	}
 
-	temporaryUUID := uuid.NewV4().String()
-	temporaryPath := filepath.Join(e.GetTempDirectory(), temporaryUUID)
-	pathToKubeConfigDirectory := filepath.Join(temporaryPath, ".kube")
-	pathToKubeConfig := filepath.Join(pathToKubeConfigDirectory, "config")
-	if _, err = common.ExecuteCommand(e,nil, nil, "/bin/mkdir", "-p", pathToKubeConfigDirectory); err != nil {
-		return nil, errors2.Wrap(err, "Failed to create kube config directory")
+	temporaryPath, err := e.CreateTempDirectory()
+	if err != nil {
+		return nil, errors.Wrap(err, "Failed to create temp dir")
+	}
+	pathToKubeConfigDirectory := path.Join(temporaryPath, ".kube")
+	pathToKubeConfig := path.Join(pathToKubeConfigDirectory, "config")
+
+	if err = e.CreateDirectory(pathToKubeConfigDirectory); err != nil {
+		return nil, errors.Wrap(err, "Failed to create kube config directory")
 	}
 
 	defer func() {
@@ -252,7 +252,11 @@ func executeCoreTerraFormAction(e *execution.PrivateExecutionEnvironment, ctx *p
 		}
 
 		// Create credentials file if it doesn't exist and write the user's credentials to it
-		err := createTerraFormCredentialsFile(e, apiServerURL, token)
+		credentialsDirectory, err := createTerraFormCredentialsFile(e, apiServerURL, token)
+		defer func() {
+			_ = os.RemoveAll(credentialsDirectory)
+		}()
+
 		if err != nil {
 			return nil, err
 		}
@@ -304,19 +308,21 @@ func executeCoreKubernetesApplyAction(e *execution.PrivateExecutionEnvironment, 
 		return nil, errors.New("can't run apply action with empty file")
 	}
 
-	temporaryPath, err := e.WriteToTempFile([]byte(applyFileContents), "/tmp/kubectl-apply")
+	tempDir, err := e.CreateTempDirectory()
+	tempPath := path.Join(tempDir, "kubectl-apply")
+	err = e.WriteFile([]byte(applyFileContents), tempPath)
 	if err != nil {
-		return nil, errors2.Wrap(err, "failed creating the apply file")
+		return nil, errors.Wrap(err, "failed creating the apply file")
 	}
 
 	defer func() {
-		err = os.Remove(temporaryPath)
+		err = os.RemoveAll(tempDir)
 		if err != nil {
-			log.Errorf("Failed to remvoe kubectl apply file with error %v", err)
+			log.Errorf("Failed to remove kubectl apply file with error %v", err)
 		}
 	}()
 
-	request.Parameters[commandParameterName] = fmt.Sprintf("kubectl apply -f %s", temporaryPath)
+	request.Parameters[commandParameterName] = fmt.Sprintf("kubectl apply -f %s", tempPath)
 	return executeCoreKubernetesAction(e, ctx, request)
 }
 
@@ -336,29 +342,17 @@ func executeCoreGoogleCloudAction(e *execution.PrivateExecutionEnvironment, ctx 
 		return nil, errors.New("command to Google Cloud CLI wasn't provided")
 	}
 
-	temporaryUUID := uuid.NewV4().String()
-	temporaryPath := fmt.Sprintf("/tmp/%s", temporaryUUID)
-	pathToConfigDirectory := fmt.Sprintf("%s/.gcp", temporaryPath)
-	pathToConfig := fmt.Sprintf("%s/config", pathToConfigDirectory)
-
-	_, err = e.CreateTempDirectory(pathToConfig)
+	pathToConfigDirectory, pathToConfig, err := initGoogleCloudEnvironment(e, fmt.Sprintf("%s", gcpCredentials))
 	if err != nil {
-		return nil, errors2.Wrap(err, "Failed to create temporary GCP directory")
+		return common.GetCommandFailureResponse(nil, err)
 	}
 
 	defer func() {
-		// Delete kube config directory
-		if _, err := common.ExecuteCommand(e, nil, nil, "/bin/rm", "-r", temporaryPath); err != nil {
-			log.Errorf("failed to delete kube config credentials from temporary filesystem, error: %v", err)
-		}
+		_ = os.RemoveAll(pathToConfigDirectory)
 	}()
 
 	environment := environmentVariables{
 		fmt.Sprintf("CLOUDSDK_AUTH_CREDENTIAL_FILE_OVERRIDE=%s", pathToConfig),
-	}
-
-	if err := initGoogleCloudEnvironment(e, temporaryPath, fmt.Sprintf("%s", gcpCredentials)); err != nil {
-		return common.GetCommandFailureResponse(nil, err)
 	}
 
 	output, err := common.ExecuteCommand(e, request, environment, "/bin/bash", "-c", command)
@@ -439,30 +433,29 @@ func initKubernetesEnvironment(e *execution.PrivateExecutionEnvironment, environ
 	return nil, nil
 }
 
-func initGoogleCloudEnvironment(e *execution.PrivateExecutionEnvironment, temporaryPath string, credentials string) error {
-	pathToGCPConfigDirectory := fmt.Sprintf("%s/.gcp", temporaryPath)
-	pathToGCPConfig := fmt.Sprintf("%s/config", pathToGCPConfigDirectory)
+func initGoogleCloudEnvironment(e *execution.PrivateExecutionEnvironment, credentials string) (string, string, error) {
+	pathToGCPConfigDirectory := path.Join(e.GetTempDirectory(), ".gcp")
+	if err := e.CreateDirectory(pathToGCPConfigDirectory); err != nil {
+		return "", "", errors.Wrap(err, "Failed to create .gcp sub-directory: ")
+	}
+	pathToGCPConfig := path.Join(pathToGCPConfigDirectory, "config")
 
-	return e.WriteToFile(pathToGCPConfig, []byte(credentials))
+	err := e.WriteToFile(pathToGCPConfig, []byte(credentials))
+	return pathToGCPConfigDirectory, pathToGCPConfig, err
 }
 
-func createTerraFormCredentialsFile(e *execution.PrivateExecutionEnvironment, apiServerURL string, token string) error {
+func createTerraFormCredentialsFile(e *execution.PrivateExecutionEnvironment, apiServerURL string, token string) (string, error) {
 
 	// Create TerraForm credentials file
-	credentialsJsonPath := path.Join(e.GetTempDirectory(), ".terraform.d", "credentials.tfrc.json")
-	if _, err := os.Stat(credentialsJsonPath); errors.Is(err, os.ErrNotExist) {
-		err := os.Mkdir(path.Join(e.GetTempDirectory(), ".terraform.d"), 0644)
-		if err != nil {
-			return err
-		}
-		credentialsFile, err := os.Create(credentialsJsonPath)
-		if err != nil {
-			return err
-		}
+	tempDir := e.GetTempDirectory()
+	terraformDir := path.Join(tempDir, ".terraform.d")
+	credentialsJsonPath := path.Join(terraformDir, "credentials.tfrc.json")
 
-		defer credentialsFile.Close()
-
-		content := fmt.Sprintf(`{
+	err := e.CreateDirectory(terraformDir)
+	if err != nil {
+		return "", err
+	}
+	content := fmt.Sprintf(`{
   "credentials": {
     "%s": {
       "token": "%s"
@@ -470,13 +463,12 @@ func createTerraFormCredentialsFile(e *execution.PrivateExecutionEnvironment, ap
   }
 }`, apiServerURL, token)
 
-		_, err = credentialsFile.WriteString(content)
-		if err != nil {
-			return err
-		}
+	err = e.WriteFile([]byte(content), credentialsJsonPath)
+	if err != nil {
+		return "", err
 	}
 
-	return nil
+	return terraformDir, nil
 }
 
 func validateTerraFormCommand(command string) ([]byte, error) {

@@ -2,8 +2,10 @@ package execution
 
 import (
 	"fmt"
+	"github.com/blinkops/blink-core/common"
 	"github.com/blinkops/blink-sdk/plugin"
 	"github.com/pkg/errors"
+	uuid "github.com/satori/go.uuid"
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/sys/unix"
 	"io/ioutil"
@@ -54,21 +56,13 @@ func (p *PrivateExecutionEnvironment) GetExecutorGid() uint32 {
 }
 
 func (p *PrivateExecutionEnvironment) CreateDirectory(path string) error {
-	err := os.MkdirAll(path, 0700)
-	if err != nil {
-		return errors.Wrap(err, "Failed to create temporary directory")
-	}
-
-	err = os.Chown(path, int(p.GetExecutorUid()), int(p.GetExecutorGid()))
-	if err != nil {
-		return err
-	}
-
-	return nil
+	_, err := common.ExecuteCommand(p, nil, nil, "/bin/mkdir", "-p", path)
+	return err
 }
 
-func (p *PrivateExecutionEnvironment) CreateTempDirectory(name string) (string, error) {
-	tempDirectoryPath := path.Join(p.GetTempDirectory(), name)
+func (p *PrivateExecutionEnvironment) CreateTempDirectory() (string, error) {
+	temporaryUUID := uuid.NewV4().String()
+	tempDirectoryPath := path.Join(p.GetTempDirectory(), temporaryUUID)
 	err := p.CreateDirectory(tempDirectoryPath)
 	return tempDirectoryPath, err
 }
@@ -87,35 +81,27 @@ func (p *PrivateExecutionEnvironment) WriteToFile(name string, bytes []byte) err
 	return nil
 }
 
-func (p *PrivateExecutionEnvironment) WriteToTempFileWithRootPath(root string, bytes []byte, prefix string) (string, error) {
+func (p *PrivateExecutionEnvironment) WriteFile(bytes []byte, fileName string) error {
 
-	file, err := ioutil.TempFile(root, prefix)
+	err := ioutil.WriteFile(fileName, bytes, 0700)
 	if err != nil {
-		return "", err
+		return err
 	}
 
-	defer func() {
-		// Close the file
-		if err := file.Close(); err != nil {
-			log.Error("failed to close file", err)
-		}
-	}()
-
-	_, err = file.Write(bytes)
+	err = os.Chown(fileName, int(p.GetExecutorUid()), int(p.GetExecutorGid()))
 	if err != nil {
-		return "", err
+		return err
 	}
 
-	err = os.Chown(file.Name(), int(p.GetExecutorUid()), int(p.GetExecutorGid()))
-	if err != nil {
-		return "", err
-	}
-
-	return file.Name(), nil
+	return nil
 }
 
 func (p *PrivateExecutionEnvironment) WriteToTempFile(bytes []byte, prefix string) (string, error) {
-	return p.WriteToTempFileWithRootPath(p.GetTempDirectory(), bytes, prefix)
+	temporaryUUID := uuid.NewV4().String()
+	fileName := fmt.Sprintf("%s%s", prefix, temporaryUUID)
+	fullFileName := path.Join(p.GetTempDirectory(), fileName)
+	err := p.WriteFile(bytes, fullFileName)
+	return fullFileName, err
 }
 
 type ExecutionController struct {
