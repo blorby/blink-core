@@ -21,14 +21,13 @@ int open(const char *path, int flags, ...) {
     return res;
 }
 
-/*
-int fclose(FILE *f);
-    int (*myreal_fclose)(FILE *) = dlsym(RTLD_NEXT, "fclose");
-    FILE *res = (myreal_fclose)(f);
+int fclose(FILE *f) {
+    int (*original_fclose)(FILE *);
+    original_fclose = dlsym(RTLD_NEXT, "fclose");
+    int res = (original_fclose)(f);
     printf("### fclose( %p) = %d\n", f, res);
     return res;
 }
-*/
 
 int close(int desc) {
     int (*real_close)() = dlsym(RTLD_NEXT, "close");
