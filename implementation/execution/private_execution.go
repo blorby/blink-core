@@ -213,25 +213,36 @@ func (ctrl *Controller) DestroyExecutionSession(executionId string) error {
 	return err
 }
 
-func (ctrl *Controller) GetRandomName(sessionID string) string {
+func (ctrl *Controller) EnsureNameRootSet(pee *PrivateExecutionEnvironment) {
 	ctrl.executionSessionsMutex.Lock()
 	defer ctrl.executionSessionsMutex.Unlock()
-	candidate := sessionID[:6]
+	if pee.NameRoot != "" {
+		return
+	}
+	root := pee.SessionId[:6]
 
 	// Handle possible name collision
-OuterLoop:
+	counter := 1
 	for {
-		counter := 1
-		randomName := candidate
-		for _, ses := range ctrl.executionSessions {
-			if ses.NameRoot == randomName {
-				randomName = fmt.Sprintf("%s_%d", candidate, counter)
-				counter++
-				continue OuterLoop
-			}
+		candidate := root
+		if ctrl.nameInUse(candidate) {
+			// If there's a collision we'll append running number until there's no collision, e.g. 010101_1, 010101_2, ...
+			candidate = fmt.Sprintf("%s_%d", root, counter)
+			counter++
+		} else {
+			pee.NameRoot = candidate
+			return
 		}
-		return randomName
 	}
+}
+
+func (ctrl *Controller) nameInUse(candidate string) bool {
+	for _, ses := range ctrl.executionSessions {
+		if ses.NameRoot == candidate {
+			return true
+		}
+	}
+	return false
 }
 
 func GetExecutionController() *Controller {
@@ -278,9 +289,8 @@ func (p *PrivateExecutionEnvironment) createUser(prefix string) (*user.User, err
 		currentUser, err := user.Current()
 		return currentUser, err
 	}
-	if p.NameRoot == "" {
-		p.NameRoot = GetExecutionController().GetRandomName(p.SessionId)
-	}
+
+	GetExecutionController().EnsureNameRootSet(p)
 	userName := fmt.Sprintf("%s_%s", prefix, p.NameRoot)
 	userDirectory := fmt.Sprintf("/home/%s", userName)
 	err := os.Mkdir(userDirectory, 0700)

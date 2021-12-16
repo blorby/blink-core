@@ -313,8 +313,6 @@ func executeCoreTerraFormAction(e *execution.PrivateExecutionEnvironment, ctx *p
 		return output, err
 	}
 
-	//environment = append(environment, fmt.Sprintf("PATH=%s", os.Getenv("PATH")))
-
 	// Execute the user's command
 	output, err = common.ExecuteBash(e, request, []string{terraformUsernameEnv}, command)
 	if err != nil {
