@@ -1,0 +1,3 @@
+#!/bin/bash
+
+sudo -iu ${GCLOUD_USER} /opt/blink/gcloud $@

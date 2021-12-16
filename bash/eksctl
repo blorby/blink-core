@@ -1,0 +1,3 @@
+#!/bin/bash
+
+sudo -iu ${AWS_USER} /opt/blink/eksctl $@

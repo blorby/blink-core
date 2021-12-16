@@ -19,7 +19,7 @@ type CommandOutput struct {
 }
 
 type Environment interface {
-	GetTempDirectory() string
+	GetHomeDirectory() string
 	GetExecutorUid() uint32
 	GetExecutorGid() uint32
 }
@@ -35,11 +35,9 @@ func ExecuteCommand(execution Environment, request *plugin.ExecuteActionRequest,
 		name,
 		args...)
 
-	command.Dir = execution.GetTempDirectory()
-
-	if environment != nil {
-		command.Env = environment
-	}
+	command.Dir = execution.GetHomeDirectory()
+	environment = append(environment, fmt.Sprintf("HOME=%s", execution.GetHomeDirectory()))
+	command.Env = environment
 
 	currentUser, err := user.Current()
 	if err != nil {
@@ -54,7 +52,7 @@ func ExecuteCommand(execution Environment, request *plugin.ExecuteActionRequest,
 		}
 	}
 
-	log.Infof("Executing command %s as user (%d, %d, %s)", name, execution.GetExecutorUid(), execution.GetExecutorGid(), execution.GetTempDirectory())
+	log.Infof("Executing command %s as user (%d, %d, %s)", name, execution.GetExecutorUid(), execution.GetExecutorGid(), execution.GetHomeDirectory())
 
 	// golang context with deadline kills the process but not the children, hence our own impl to kill all after timeout
 
@@ -107,7 +105,7 @@ func GetCommandFailureResponse(output []byte, err error) ([]byte, error) {
 }
 
 func WriteToTempFile(execution Environment, bytes []byte, prefix string) (string, error) {
-	file, err := ioutil.TempFile(execution.GetTempDirectory(), prefix)
+	file, err := ioutil.TempFile(execution.GetHomeDirectory(), prefix)
 	if err != nil {
 		return "", err
 	}

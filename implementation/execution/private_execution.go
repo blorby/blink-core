@@ -19,18 +19,18 @@ import (
 
 const (
 	StopExecutionSessionAction = "stop_execution"
-
-	randomPasswordLength = 9
+	randomPasswordLength       = 9
 )
 
 var (
 	createOnce sync.Once
-	controller *ExecutionController
+	controller *Controller
 )
 
 type PrivateExecutionEnvironment struct {
 	SessionId string
-	User      user.User
+	User      *user.User
+	NameRoot  string
 }
 
 func (p *PrivateExecutionEnvironment) GetUserName() string {
@@ -41,7 +41,7 @@ func (p *PrivateExecutionEnvironment) GetSessionId() string {
 	return p.SessionId
 }
 
-func (p *PrivateExecutionEnvironment) GetTempDirectory() string {
+func (p *PrivateExecutionEnvironment) GetHomeDirectory() string {
 	return p.User.HomeDir
 }
 
@@ -62,7 +62,7 @@ func (p *PrivateExecutionEnvironment) CreateDirectory(path string) error {
 
 func (p *PrivateExecutionEnvironment) CreateTempDirectory() (string, error) {
 	temporaryUUID := uuid.NewV4().String()
-	tempDirectoryPath := path.Join(p.GetTempDirectory(), temporaryUUID)
+	tempDirectoryPath := path.Join(p.GetHomeDirectory(), temporaryUUID)
 	err := p.CreateDirectory(tempDirectoryPath)
 	return tempDirectoryPath, err
 }
@@ -99,17 +99,87 @@ func (p *PrivateExecutionEnvironment) WriteFile(bytes []byte, fileName string) e
 func (p *PrivateExecutionEnvironment) WriteToTempFile(bytes []byte, prefix string) (string, error) {
 	temporaryUUID := uuid.NewV4().String()
 	fileName := fmt.Sprintf("%s%s", prefix, temporaryUUID)
-	fullFileName := path.Join(p.GetTempDirectory(), fileName)
+	fullFileName := path.Join(p.GetHomeDirectory(), fileName)
 	err := p.WriteFile(bytes, fullFileName)
 	return fullFileName, err
 }
 
-type ExecutionController struct {
+func (p *PrivateExecutionEnvironment) CreateCliUser(cli string, environment []string) (*user.User, error) {
+	usr, err := p.createUser(cli)
+	if err != nil {
+		return nil, err
+	}
+
+	err = p.cliUserSetup(cli, usr, environment)
+	if err != nil {
+		p.CleanupCliUser(usr.Username)
+	}
+	return usr, err
+}
+
+func (p *PrivateExecutionEnvironment) WriteProfileFile(usr *user.User, environment []string) error {
+	if len(environment) < 1 {
+		return nil
+	}
+	profileFile := path.Join(usr.HomeDir, ".profile")
+
+	log.Infof("Writing environment variables into: %s", profileFile)
+	file, err := os.OpenFile(profileFile, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
+	if err != nil {
+		return err
+	}
+	defer func(file *os.File) {
+		_ = file.Close()
+		_ = ChOwnMod(profileFile, usr.Uid, usr.Gid)
+	}(file)
+
+	for _, line := range environment {
+		if _, err = file.WriteString(fmt.Sprintf("export %s\n", line)); err != nil {
+			return err
+		}
+	}
+	return err
+}
+
+func sudoersFile(username string) string {
+	return path.Join("/etc/sudoers.d", username)
+}
+
+func (p *PrivateExecutionEnvironment) addSudoersEntry(cli string, username string) error {
+	sudoerLine := fmt.Sprintf("%s  ALL=(%s) NOPASSWD: /usr/bin/sh -c /opt/blink/%s *\n", p.User.Username, username, cli)
+	return os.WriteFile(sudoersFile(username), []byte(sudoerLine), 0440)
+}
+
+func (p *PrivateExecutionEnvironment) removeSudoersEntry(username string) error {
+	return os.Remove(sudoersFile(username))
+}
+
+func (p *PrivateExecutionEnvironment) cliUserSetup(cli string, usr *user.User, environment []string) error {
+	if err := p.WriteProfileFile(usr, environment); err != nil {
+		return errors.Wrap(err, "failed creating .profile file")
+	}
+	if err := p.addSudoersEntry(cli, usr.Username); err != nil {
+		return errors.Wrap(err, "failed adding sudoers entry")
+	}
+	return nil
+}
+
+func (p *PrivateExecutionEnvironment) CleanupCliUser(username string) {
+	if err := RemoveUser(username); err != nil {
+		log.Errorf("failed to remove a user with error: %v", err)
+	}
+
+	if err := p.removeSudoersEntry(username); err != nil {
+		log.Errorf("failed to remove sudoers entry: %v", err)
+	}
+}
+
+type Controller struct {
 	executionSessionsMutex sync.RWMutex
 	executionSessions      map[string]*PrivateExecutionEnvironment
 }
 
-func (ctrl *ExecutionController) GetExecutionSession(executionId string) *PrivateExecutionEnvironment {
+func (ctrl *Controller) GetExecutionSession(executionId string) *PrivateExecutionEnvironment {
 	ctrl.executionSessionsMutex.RLock()
 	defer ctrl.executionSessionsMutex.RUnlock()
 
@@ -121,14 +191,14 @@ func (ctrl *ExecutionController) GetExecutionSession(executionId string) *Privat
 	return session
 }
 
-func (ctrl *ExecutionController) SaveExecutionSession(session *PrivateExecutionEnvironment) {
+func (ctrl *Controller) SaveExecutionSession(session *PrivateExecutionEnvironment) {
 	ctrl.executionSessionsMutex.Lock()
 	defer ctrl.executionSessionsMutex.Unlock()
 
 	ctrl.executionSessions[session.GetSessionId()] = session
 }
 
-func (ctrl *ExecutionController) DestroyExecutionSession(executionId string) error {
+func (ctrl *Controller) DestroyExecutionSession(executionId string) error {
 	session := ctrl.GetExecutionSession(executionId)
 	if session == nil {
 		return errors.Errorf("No execution session found for %s", executionId)
@@ -143,9 +213,30 @@ func (ctrl *ExecutionController) DestroyExecutionSession(executionId string) err
 	return err
 }
 
-func GetExecutionController() *ExecutionController {
+func (ctrl *Controller) GetRandomName(sessionID string) string {
+	ctrl.executionSessionsMutex.Lock()
+	defer ctrl.executionSessionsMutex.Unlock()
+	candidate := sessionID[:6]
+
+	// Handle possible name collision
+OuterLoop:
+	for {
+		counter := 1
+		randomName := candidate
+		for _, ses := range ctrl.executionSessions {
+			if ses.NameRoot == randomName {
+				randomName = fmt.Sprintf("%s_%d", candidate, counter)
+				counter++
+				continue OuterLoop
+			}
+		}
+		return randomName
+	}
+}
+
+func GetExecutionController() *Controller {
 	createOnce.Do(func() {
-		controller = &ExecutionController{
+		controller = &Controller{
 			executionSessions: map[string]*PrivateExecutionEnvironment{},
 		}
 	})
@@ -162,35 +253,43 @@ func AcquirePrivateExecutionSession(executionId string) (*PrivateExecutionEnviro
 
 	log.Infof("Creating execution session for %s", executionId)
 
-	userInformation, err := createExecutionSession(executionId)
+	session := &PrivateExecutionEnvironment{
+		SessionId: executionId,
+	}
+
+	userInformation, err := session.createExecutionSession()
 	if err != nil {
 		return nil, err
 	}
 
-	session := &PrivateExecutionEnvironment{
-		SessionId: executionId,
-		User:      *userInformation,
-	}
-
-	log.Infof("Created user for private execution %v", *userInformation)
+	session.User = userInformation
+	log.Infof("Created user for private execution %v", userInformation)
 
 	GetExecutionController().SaveExecutionSession(session)
 	return session, nil
 }
 
-func createExecutionSession(executionId string) (*user.User, error) {
+func (p *PrivateExecutionEnvironment) createExecutionSession() (*user.User, error) {
+	return p.createUser("sh")
+}
+
+func (p *PrivateExecutionEnvironment) createUser(prefix string) (*user.User, error) {
 	if runtime.GOOS != "linux" {
 		currentUser, err := user.Current()
 		return currentUser, err
 	}
-	userDirectory := fmt.Sprintf("/executions/%s", executionId)
+	if p.NameRoot == "" {
+		p.NameRoot = GetExecutionController().GetRandomName(p.SessionId)
+	}
+	userName := fmt.Sprintf("%s_%s", prefix, p.NameRoot)
+	userDirectory := fmt.Sprintf("/home/%s", userName)
 	err := os.Mkdir(userDirectory, 0700)
 	if err != nil {
 		return nil, errors.Wrap(err, "Failed to create user directory: ")
 	}
 
 	userToCreate := &User{
-		Name:      Sanitize(executionId),
+		Name:      userName,
 		Group:     "core",
 		Shell:     "/bin/sh",
 		Directory: userDirectory,
@@ -206,23 +305,37 @@ func createExecutionSession(executionId string) (*user.User, error) {
 		return nil, errors.Wrap(err, "Failed to lookup user for private execution: ")
 	}
 
-	uidAsInt, _ := strconv.Atoi(userInformation.Uid)
-	gidAsInt, _ := strconv.Atoi(userInformation.Gid)
-
-	err = os.Chown(userDirectory, uidAsInt, gidAsInt)
+	err = ChOwnMod(userDirectory, userInformation.Uid, userInformation.Gid)
 	if err != nil {
-		return nil, errors.Wrap(err, "Failed to change change ownership of  directory : ")
-	}
-
-	err = os.Chmod(userDirectory, 0700)
-	if err != nil {
-		return nil, errors.Wrap(err, "Failed to change user directory permissions: ")
+		return nil, err
 	}
 
 	log.Infof("setting umask")
 	unix.Umask(077) // umask uses octal representation
 
 	return userInformation, nil
+}
+
+func (p *PrivateExecutionEnvironment) CreateCliUserPee(cliUser *user.User) *PrivateExecutionEnvironment {
+	return &PrivateExecutionEnvironment{
+		SessionId: p.SessionId,
+		User:      cliUser,
+		NameRoot:  p.NameRoot,
+	}
+}
+
+func ChOwnMod(path string, uid string, gid string) error {
+	uidAsInt, _ := strconv.Atoi(uid)
+	gidAsInt, _ := strconv.Atoi(gid)
+
+	if err := os.Chown(path, uidAsInt, gidAsInt); err != nil {
+		return errors.Wrap(err, "Failed to change change ownership of  directory : ")
+	}
+
+	if err := os.Chmod(path, 0700); err != nil {
+		return errors.Wrap(err, "Failed to change user directory permissions: ")
+	}
+	return nil
 }
 
 func StopPrivateExecution(request *plugin.ExecuteActionRequest) ([]byte, error) {

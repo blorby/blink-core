@@ -1,0 +1,3 @@
+#!/bin/bash
+
+sudo -iu ${TERRAFORM_USER} /opt/blink/terraform $@

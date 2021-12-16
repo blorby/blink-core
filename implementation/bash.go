@@ -38,7 +38,6 @@ func executeCoreBashAction(execution *execution.PrivateExecutionEnvironment, ctx
 	}
 
 	environmentVariables := os.Environ()
-	environmentVariables = append(environmentVariables, getConnectionsAsEnvVariables(ctx.GetAllConnections())...)
 
 	output, err := common.ExecuteCommand(execution, request, environmentVariables, "/bin/bash", "-c", fmt.Sprintf("%s", code))
 	if err != nil {

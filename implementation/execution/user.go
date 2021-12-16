@@ -8,7 +8,6 @@ import (
 	log "github.com/sirupsen/logrus"
 	"os/exec"
 	"runtime"
-	"strings"
 )
 
 func CreateRandom(n int) ([]byte, error) {
@@ -27,10 +26,6 @@ type User struct {
 	Directory string
 	Group     string
 	Shell     string
-}
-
-func Sanitize(username string) string {
-	return strings.ReplaceAll(username, "-", "")
 }
 
 func AddNewUser(u *User) (string, error) {

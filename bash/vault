@@ -1,0 +1,3 @@
+#!/bin/bash
+
+sudo -iu ${VAULT_USER} /opt/blink/vault $@
