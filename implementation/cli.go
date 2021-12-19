@@ -36,9 +36,9 @@ const (
 )
 
 func executeCoreAWSAction(e *execution.PrivateExecutionEnvironment, ctx *plugin.ActionContext, request *plugin.ExecuteActionRequest) ([]byte, error) {
-	credentials, err := ctx.GetCredentials("aws")
-	if err != nil {
-		return nil, err
+	command, ok := request.Parameters[commandParameterName]
+	if !ok {
+		return nil, errors.New("command to AWS CLI wasn't provided")
 	}
 
 	region, ok := request.Parameters[regionParameterName]
@@ -46,13 +46,28 @@ func executeCoreAWSAction(e *execution.PrivateExecutionEnvironment, ctx *plugin.
 		region = "us-east-1"
 	}
 
-	command, ok := request.Parameters[commandParameterName]
-	if !ok {
-		return nil, errors.New("command to AWS CLI wasn't provided")
+	environment := []string{
+		fmt.Sprintf("%s=%v", regionEnvironmentVariable, region),
 	}
 
-	var environment environmentVariables
+	credentials, err := ctx.GetCredentials("aws")
+	if err == nil {
+		awsEnvironmentVariables, err := resolveAWSCredentials(credentials, region)
+		if err != nil {
+			return nil, err
+		}
+		environment = append(environment, awsEnvironmentVariables...)
+	}
 
+	output, err := common.ExecuteCommand(e, request, environment, "/bin/bash", "-c", command)
+	if err != nil {
+		return common.GetCommandFailureResponse(output, err)
+	}
+
+	return output, nil
+}
+
+func resolveAWSCredentials(credentials map[string]interface{}, region string) (environment []string, err error) {
 	m := convertInterfaceMapToStringMap(credentials)
 	sessionType, k, v := detectConnectionType(m)
 	switch sessionType {
@@ -76,13 +91,7 @@ func executeCoreAWSAction(e *execution.PrivateExecutionEnvironment, ctx *plugin.
 		environment = append(environment, fmt.Sprintf("%s=%v", strings.ToUpper(key), value))
 	}
 
-	environment = append(environment, fmt.Sprintf("%s=%v", regionEnvironmentVariable, region))
-	output, err := common.ExecuteCommand(e, request, environment, "/bin/bash", "-c", command)
-	if err != nil {
-		return common.GetCommandFailureResponse(output, err)
-	}
-
-	return output, nil
+	return
 }
 
 func executeCoreGITAction(e *execution.PrivateExecutionEnvironment, ctx *plugin.ActionContext, request *plugin.ExecuteActionRequest) ([]byte, error) {
