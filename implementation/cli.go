@@ -18,19 +18,18 @@ import (
 )
 
 const (
-	regionParameterName       = "Region"
-	commandParameterName      = "Command"
-	fileParameterName         = "file"
-	regionEnvironmentVariable = "AWS_DEFAULT_REGION"
-	vaultAddress              = "VAULT_ADDR"
-	vaultToken                = "VAULT_TOKEN"
-	terraformAddress          = "TERRAFORM_ADDR"
-	terraformToken            = "TERRAFORM_TOKEN"
-	awsAccessKeyId            = "aws_access_key_id"
-	awsSecretAccessKey        = "aws_secret_access_key"
-	awsSessionToken           = "aws_session_token"
-	roleArn                   = "role_arn"
-	externalID                = "external_id"
+	regionParameterName  = "Region"
+	commandParameterName = "Command"
+	fileParameterName    = "file"
+	vaultAddress         = "VAULT_ADDR"
+	vaultToken           = "VAULT_TOKEN"
+	terraformAddress     = "TERRAFORM_ADDR"
+	terraformToken       = "TERRAFORM_TOKEN"
+	awsAccessKeyId       = "aws_access_key_id"
+	awsSecretAccessKey   = "aws_secret_access_key"
+	awsSessionToken      = "aws_session_token"
+	roleArn              = "role_arn"
+	externalID           = "external_id"
 )
 
 func executeAwsCli(e *execution.PrivateExecutionEnvironment, ctx *plugin.ActionContext, request *plugin.ExecuteActionRequest) ([]byte, error) {
@@ -58,15 +57,30 @@ func executeCoreAWSAction(e *execution.PrivateExecutionEnvironment, ctx *plugin.
 	// if no credentials provided, execute without credentials, otherwise resolve assumed role etc.
 	if err == nil {
 		if m, err = resolveAwsCreds(m, credentials, region); err != nil {
-			return nil, err
+			log.Warnf("failed resolving aws credentials, will try without credentials: %v", err)
 		}
 	}
 
+	cliUsername, err := initAwsEnv(e, cliCommand, m, region)
+	defer e.CleanupCliUser(cliUsername)
+
+	if err != nil {
+		return nil, err
+	}
+	awsUsernameEnv := fmt.Sprintf("%s_USER=%s", strings.ToUpper(cliCommand), cliUsername)
+	output, err := common.ExecuteCommand(e, request, []string{awsUsernameEnv}, "/bin/bash", "-c", command)
+	if err != nil {
+		return common.GetCommandFailureResponse(output, err)
+	}
+
+	return output, nil
+}
+
+func initAwsEnv(e *execution.PrivateExecutionEnvironment, cliCommand string, m map[string]string, region string) (string, error) {
 	user, err := e.CreateCliUser(cliCommand)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to create cli user")
+		return "", errors.Wrap(err, "failed to create cli user")
 	}
-	defer e.CleanupCliUser(user.Username)
 	cliUserPee := e.CreateCliUserPee(user)
 
 	var lines []string
@@ -80,20 +94,14 @@ func executeCoreAWSAction(e *execution.PrivateExecutionEnvironment, ctx *plugin.
 	awsCredFileContent := strings.Join(lines, "\n")
 
 	if err = cliUserPee.CreateDirectory(path.Join(cliUserPee.GetHomeDirectory(), ".aws")); err != nil {
-		return nil, errors.Wrap(err, "failed to create .aws directory")
+		return user.Username, errors.Wrap(err, "failed to create .aws directory")
 	}
 
 	if err = cliUserPee.WriteToFile(path.Join(cliUserPee.GetHomeDirectory(), ".aws", "credentials"), []byte(awsCredFileContent), 0600); err != nil {
-		return nil, errors.Wrap(err, "failed to write to .aws/credentials")
+		return user.Username, errors.Wrap(err, "failed to write to .aws/credentials")
 	}
 
-	awsUsernameEnv := fmt.Sprintf("%s_USER=%s", strings.ToUpper(cliCommand), user.Username)
-	output, err := common.ExecuteCommand(e, request, []string{awsUsernameEnv}, "/bin/bash", "-c", command)
-	if err != nil {
-		return common.GetCommandFailureResponse(output, err)
-	}
-
-	return output, nil
+	return user.Username, nil
 }
 
 func resolveAwsCreds(m map[string]string, credentials map[string]interface{}, region string) (map[string]string, error) {

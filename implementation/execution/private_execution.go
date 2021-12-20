@@ -141,6 +141,10 @@ func (p *PrivateExecutionEnvironment) cliUserSetup(cli string, usr *user.User) e
 }
 
 func (p *PrivateExecutionEnvironment) CleanupCliUser(username string) {
+	if username == "" {
+		return
+	}
+
 	if err := RemoveUser(username); err != nil {
 		log.Errorf("failed to remove a user with error: %v", err)
 	}
