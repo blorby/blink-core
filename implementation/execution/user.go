@@ -8,6 +8,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"os/exec"
 	"runtime"
+	"strings"
 )
 
 func CreateRandom(n int) ([]byte, error) {
@@ -28,9 +29,30 @@ type User struct {
 	Shell     string
 }
 
+func AddNewGroup(name string) error {
+	log.Infof("Adding new group named %s", name)
+	groupCmd := exec.Command("groupadd", name)
+	groupCmdOutput, err := groupCmd.CombinedOutput()
+	if err != nil {
+		return errors.Wrapf(err, "Failed to create group with output [%s]: ", groupCmdOutput)
+	}
+
+	return nil
+}
+
+func RemoveGroup(name string) error {
+	log.Infof("Removing group named %s", name)
+	groupCmd := exec.Command("groupdel", name)
+	groupCmdOutput, err := groupCmd.CombinedOutput()
+	if err != nil {
+		return errors.Wrapf(err, "Failed to remove group with output [%s]: ", groupCmdOutput)
+	}
+
+	return nil
+}
+
 func AddNewUser(u *User) (string, error) {
 
-	log.Infof("adding new user named %s", u.Name)
 	passwordBase, err := CreateRandom(randomPasswordLength)
 	if err != nil {
 		return "", err
@@ -38,22 +60,22 @@ func AddNewUser(u *User) (string, error) {
 
 	password := base64.StdEncoding.EncodeToString(passwordBase)
 
-	argUser := []string{"-m", "-d", u.Directory, "-G", u.Group, "-s", u.Shell, u.Name}
+	argUser := []string{"-m", "-d", u.Directory, "-g", u.Group, "-s", u.Shell, u.Name}
 	argPass := []string{"-c", fmt.Sprintf("echo %s:%s | chpasswd", u.Name, password)}
+
+	log.Infof("Running: useradd %s", strings.Join(argUser, " "))
 
 	userCmd := exec.Command("useradd", argUser...)
 	passCmd := exec.Command("/bin/sh", argPass...)
 
 	createUserOutput, err := userCmd.CombinedOutput()
 	if err != nil {
-		log.Errorf("Failed to create user %v %s", err, createUserOutput)
-		return "", errors.Wrap(err, "Failed to create user for execution: ")
+		return "", errors.Wrapf(err, "Failed to create user with output [%s]: ", createUserOutput)
 	}
 
 	createPasswordOutput, err := passCmd.CombinedOutput()
 	if err != nil {
-		log.Errorf("Failed to set user password %v %s", err, createPasswordOutput)
-		return "", errors.Wrap(err, "Failed to set user password for execution: ")
+		return "", errors.Wrapf(err, "Failed to set user password with output [%s]: ", createPasswordOutput)
 	}
 
 	return password, nil

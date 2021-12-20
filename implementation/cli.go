@@ -57,8 +57,6 @@ func executeCoreAWSAction(e *execution.PrivateExecutionEnvironment, ctx *plugin.
 		return nil, errors.New("command to AWS CLI wasn't provided")
 	}
 
-	var environment []string
-
 	m := convertInterfaceMapToStringMap(credentials)
 	sessionType, k, v := detectConnectionType(m)
 	switch sessionType {
@@ -78,16 +76,31 @@ func executeCoreAWSAction(e *execution.PrivateExecutionEnvironment, ctx *plugin.
 		return nil, fmt.Errorf("invalid credentials: make sure access+secret key are supplied OR role_arn+external_id")
 	}
 
-	for key, value := range m {
-		environment = append(environment, fmt.Sprintf("%s=%v", strings.ToUpper(key), value))
-	}
-
-	environment = append(environment, fmt.Sprintf("%s=%v", regionEnvironmentVariable, region))
-	user, err := e.CreateCliUser(cliCommand, environment)
+	user, err := e.CreateCliUser(cliCommand)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to create cli user")
 	}
 	defer e.CleanupCliUser(user.Username)
+
+	cliUserPee := e.CreateCliUserPee(user)
+
+	var lines []string
+	lines = append(lines, "[default]")
+	for key, value := range m {
+		if value != "" {
+			lines = append(lines, fmt.Sprintf("%s = %v", key, value))
+		}
+	}
+	lines = append(lines, fmt.Sprintf("%s = %v\n", "region", region))
+	awsCredFileContent := strings.Join(lines, "\n")
+
+	if err = cliUserPee.CreateDirectory(path.Join(cliUserPee.GetHomeDirectory(), ".aws")); err != nil {
+		return nil, errors.Wrap(err, "failed to create .aws directory")
+	}
+
+	if err = cliUserPee.WriteToFile(path.Join(cliUserPee.GetHomeDirectory(), ".aws", "credentials"), []byte(awsCredFileContent), 0600); err != nil {
+		return nil, errors.Wrap(err, "failed to write to .aws/credentials")
+	}
 
 	awsUsernameEnv := fmt.Sprintf("AWS_USER=%s", user.Username)
 	output, err := common.ExecuteCommand(e, request, []string{awsUsernameEnv}, "/bin/bash", "-c", command)
@@ -99,9 +112,32 @@ func executeCoreAWSAction(e *execution.PrivateExecutionEnvironment, ctx *plugin.
 }
 
 func executeCoreGITAction(e *execution.PrivateExecutionEnvironment, ctx *plugin.ActionContext, request *plugin.ExecuteActionRequest) ([]byte, error) {
-	credentials, err := ctx.GetCredentials("github")
+	sshCredentials, _ := ctx.GetCredentials("ssh")
+	basicAuthCredentials, _ := ctx.GetCredentials("github")
+	basicAuthType := "github"
+	if basicAuthCredentials == nil {
+		basicAuthCredentials, _ = ctx.GetCredentials("gitlab")
+		basicAuthType = "gitlab"
+	}
+	var envList []string
+
+	cliUser, err := e.CreateCliUser("git")
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "failed to create cli user")
+	}
+	defer e.CleanupCliUser(cliUser.Username)
+	cliUserPee := e.CreateCliUserPee(cliUser)
+
+	envList = append(envList, fmt.Sprintf("GIT_USER=%s", cliUser.Username))
+
+	if basicAuthCredentials != nil {
+		if err = initBasicAuthGitCredentials(cliUserPee, basicAuthCredentials, basicAuthType); err != nil {
+			return nil, err
+		}
+	} else if sshCredentials != nil {
+		if err = initSshCredentials(cliUserPee, sshCredentials); err != nil {
+			return nil, err
+		}
 	}
 
 	command, ok := request.Parameters[commandParameterName]
@@ -109,24 +145,78 @@ func executeCoreGITAction(e *execution.PrivateExecutionEnvironment, ctx *plugin.
 		return nil, errors.New("command to GIT CLI wasn't provided")
 	}
 
-	var environment []string
-	for key, value := range credentials {
-		environment = append(environment, fmt.Sprintf("%s=%v", strings.ToUpper(key), value))
-	}
-
-	user, err := e.CreateCliUser("git", environment)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to create cli user")
-	}
-	defer e.CleanupCliUser(user.Username)
-
-	gitUsernameEnv := fmt.Sprintf("GIT_USER=%s", user.Username)
-	output, err := common.ExecuteCommand(e, request, []string{gitUsernameEnv}, "/bin/bash", "-c", command)
+	output, err := common.ExecuteCommand(e, request, envList, "/bin/bash", "-c", command)
 	if err != nil {
 		return common.GetCommandFailureResponse(output, err)
 	}
 
 	return output, nil
+}
+
+func initBasicAuthGitCredentials(pee *execution.PrivateExecutionEnvironment, credentials map[string]interface{}, authType string) error {
+	username := credentials["username"]
+	if username == "" {
+		return errors.Errorf("%s basic-auth connection is missing a username", authType)
+	}
+	token := credentials["Token"]
+	if token == "" {
+		return errors.Errorf("%s basic-auth connection is missing a token", authType)
+	}
+	host := credentials["host"]
+	if host == nil || host == "" {
+		host = "github.com"
+		if authType == "gitlab" {
+			host = "gitlab.com"
+		}
+	}
+	output, err := common.ExecuteBash(pee, nil, nil, common.ClisDir+"/git config --global credential.helper store")
+	if err != nil {
+		return errors.Wrapf(err, "failed to config git credentials.helper with output [%s]: ", output)
+	}
+
+	gitURL := fmt.Sprintf("https://%s:%s@%s\n", username, token, host)
+	if err = pee.WriteToFile(path.Join(pee.GetHomeDirectory(), ".git-credentials"), []byte(gitURL), 0700); err != nil {
+		return errors.Wrap(err, "failed to write to .git-credentials")
+	}
+
+	return nil
+}
+
+func initSshCredentials(pee *execution.PrivateExecutionEnvironment, credentials map[string]interface{}) error {
+	if err := pee.CreateDirectory(".ssh"); err != nil {
+		return errors.Wrap(err, "failed creating .ssh directory")
+	}
+
+	sshDir := path.Join(pee.GetHomeDirectory(), ".ssh")
+	if err := os.Chmod(sshDir, 0700); err != nil {
+		return errors.Wrap(err, "failed chmod .ssh directory")
+	}
+
+	key, ok := credentials["key"].(string)
+	if !ok || key == "" {
+		return errors.New("missing ssh key")
+	}
+
+	usr, ok := credentials["username"].(string)
+	if !ok || usr == "" {
+		return errors.New("missing ssh username")
+	}
+
+	passphrase, ok := credentials["passphrase"].(string)
+	if passphrase != "" {
+		return errors.New("core.git does not support ssh connection with passphrase")
+	}
+
+	if err := pee.WriteToFile(path.Join(sshDir, "id_rsa"), []byte(key), 0600); err != nil {
+		return err
+	}
+
+	sshConfigFile := fmt.Sprintf("Host *\n\tUser %s\n\tStrictHostKeyChecking no\n", usr)
+	if err := pee.WriteToFile(path.Join(sshDir, "config"), []byte(sshConfigFile), 0600); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func executeCoreKubernetesAction(e *execution.PrivateExecutionEnvironment, ctx *plugin.ActionContext, request *plugin.ExecuteActionRequest) ([]byte, error) {
@@ -161,7 +251,7 @@ func kubectl(e *execution.PrivateExecutionEnvironment, ctx *plugin.ActionContext
 		return nil, errors.New("command to K8S CLI wasn't provided")
 	}
 
-	cliUser, err := e.CreateCliUser("kubectl", nil)
+	cliUser, err := e.CreateCliUser("kubectl")
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to create cli user")
 	}
@@ -224,7 +314,7 @@ func executeCoreVaultAction(e *execution.PrivateExecutionEnvironment, ctx *plugi
 		fmt.Sprintf("%s=%s", vaultAddress, apiServerURL),
 		fmt.Sprintf("PATH=%s", os.Getenv("PATH")),
 	}
-	cliUser, err := e.CreateCliUser("vault", environment)
+	cliUser, err := e.CreateCliUser("vault")
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to create cli user")
 	}
@@ -233,7 +323,7 @@ func executeCoreVaultAction(e *execution.PrivateExecutionEnvironment, ctx *plugi
 	vaultUsernameEnv := fmt.Sprintf("VAULT_USER=%s", cliUser.Username)
 
 	// RUN vault login to connect to the vault at the address provided by the user in the connection.
-	if output, err := common.ExecuteCommand(ce, nil, environment, "/opt/blink/vault", "login", token.(string)); err != nil {
+	if output, err := common.ExecuteCommand(ce, nil, environment, common.ClisDir+"/vault", "login", token.(string)); err != nil {
 		return common.GetCommandFailureResponse(output, err)
 	}
 
@@ -247,60 +337,6 @@ func executeCoreVaultAction(e *execution.PrivateExecutionEnvironment, ctx *plugi
 }
 
 func executeCoreTerraFormAction(e *execution.PrivateExecutionEnvironment, ctx *plugin.ActionContext, request *plugin.ExecuteActionRequest) ([]byte, error) {
-	var environment []string
-
-	cliUser, err := e.CreateCliUser("terraform", nil)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to create cli user")
-	}
-	defer e.CleanupCliUser(cliUser.Username)
-	ce := e.CreateCliUserPee(cliUser)
-
-	terraformUsernameEnv := fmt.Sprintf("TERRAFORM_USER=%s", cliUser.Username)
-
-	// Use either TerraForm or AWS credentials
-	credentials, err := ctx.GetCredentials("terraform")
-	if err != nil {
-		awsCredentials, err := ctx.GetCredentials("aws")
-		if err != nil {
-			return nil, errors.New("connection with terraform or aws is missing from action context")
-		}
-
-		m := convertInterfaceMapToStringMap(awsCredentials)
-		for key, value := range m {
-			environment = append(environment, fmt.Sprintf("%s=%v", strings.ToUpper(key), value))
-		}
-		if err := ce.WriteProfileFile(cliUser, environment); err != nil {
-			return nil, errors.Wrap(err, "failed creating profile file")
-		}
-
-	} else {
-		tokenRaw, ok := credentials[terraformToken]
-		if !ok {
-			return nil, errors.New("connection to terraform is invalid")
-		}
-
-		apiServerURLRaw, ok := credentials[terraformAddress]
-		if !ok {
-			return nil, errors.New("connection to terraform is invalid")
-		}
-
-		token, ok := tokenRaw.(string)
-		if !ok {
-			return nil, errors.New("Terraform token is not a string")
-		}
-
-		apiServerURL, ok := apiServerURLRaw.(string)
-		if !ok {
-			return nil, errors.New("Api server url is not a string")
-		}
-
-		// Create credentials file if it doesn't exist and write the user's credentials to it
-		_, err := createTerraFormCredentialsFile(ce, apiServerURL, token)
-		if err != nil {
-			return nil, err
-		}
-	}
 
 	command, ok := request.Parameters[commandParameterName]
 	if !ok {
@@ -313,8 +349,9 @@ func executeCoreTerraFormAction(e *execution.PrivateExecutionEnvironment, ctx *p
 		return output, err
 	}
 
+	// Use either TerraForm or AWS credentials
 	// Execute the user's command
-	output, err = common.ExecuteBash(e, request, []string{terraformUsernameEnv}, command)
+	output, err = runTerraformCommand(e, ctx, request)
 	if err != nil {
 		if strings.Contains(string(output), "Couldn't find an alternative") {
 			return nil, errors.New("terraform commands must start with \"terraform\" prefix")
@@ -329,6 +366,58 @@ func executeCoreTerraFormAction(e *execution.PrivateExecutionEnvironment, ctx *p
 	}
 
 	return []byte(fixTerraFormOutput(string(output))), nil
+}
+
+func runTerraformCommand(e *execution.PrivateExecutionEnvironment, ctx *plugin.ActionContext, request *plugin.ExecuteActionRequest) ([]byte, error) {
+
+	credentials, err := ctx.GetCredentials("terraform")
+	if err != nil {
+		// try to run with aws credentials
+		return executeCoreAWSAction(e, ctx, request, "terraform")
+	}
+
+	cliUser, err := e.CreateCliUser("terraform")
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to create cli user")
+	}
+	defer e.CleanupCliUser(cliUser.Username)
+	ce := e.CreateCliUserPee(cliUser)
+
+	terraformUsernameEnv := fmt.Sprintf("TERRAFORM_USER=%s", cliUser.Username)
+
+	tokenRaw, ok := credentials[terraformToken]
+	if !ok {
+		return nil, errors.New("connection to terraform is invalid")
+	}
+
+	apiServerURLRaw, ok := credentials[terraformAddress]
+	if !ok {
+		return nil, errors.New("connection to terraform is invalid")
+	}
+
+	token, ok := tokenRaw.(string)
+	if !ok {
+		return nil, errors.New("Terraform token is not a string")
+	}
+
+	apiServerURL, ok := apiServerURLRaw.(string)
+	if !ok {
+		return nil, errors.New("Api server url is not a string")
+	}
+
+	// Create credentials file if it doesn't exist and write the user's credentials to it
+	_, err = createTerraFormCredentialsFile(ce, apiServerURL, token)
+	if err != nil {
+		return nil, err
+	}
+
+	command, ok := request.Parameters[commandParameterName]
+	if !ok {
+		return nil, errors.New("command to terraform wasn't provided")
+	}
+
+	// Execute the user's command
+	return common.ExecuteBash(e, request, []string{terraformUsernameEnv}, command)
 }
 
 func executeCoreKubernetesApplyAction(e *execution.PrivateExecutionEnvironment, ctx *plugin.ActionContext, request *plugin.ExecuteActionRequest) ([]byte, error) {
@@ -367,7 +456,7 @@ func executeCoreGoogleCloudAction(e *execution.PrivateExecutionEnvironment, ctx 
 		return nil, errors.New("command to Google Cloud CLI wasn't provided")
 	}
 
-	user, err := e.CreateCliUser("gcloud", nil)
+	user, err := e.CreateCliUser("gcloud")
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to create cli user")
 	}
@@ -383,12 +472,10 @@ func executeCoreGoogleCloudAction(e *execution.PrivateExecutionEnvironment, ctx 
 
 	cliEnv := []string{
 		fmt.Sprintf("CLOUDSDK_AUTH_CREDENTIAL_FILE_OVERRIDE=%s", pathToConfig),
-	}
-	if err := ce.WriteProfileFile(user, cliEnv); err != nil {
-		return nil, errors.Wrap(err, "failed writing profile file")
+		gcloudUsernameEnv,
 	}
 
-	output, err := common.ExecuteCommand(e, request, []string{gcloudUsernameEnv}, "/bin/bash", "-c", command)
+	output, err := common.ExecuteCommand(e, request, cliEnv, "/bin/bash", "-c", command)
 	if err != nil {
 		return common.GetCommandFailureResponse(output, err)
 	}
@@ -422,7 +509,7 @@ func executeCoreAzureAction(e *execution.PrivateExecutionEnvironment, ctx *plugi
 		return nil, errors.New("command to Google Cloud CLI wasn't provided")
 	}
 
-	cliUser, err := e.CreateCliUser("az", nil)
+	cliUser, err := e.CreateCliUser("az")
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to create cli user")
 	}
@@ -432,7 +519,7 @@ func executeCoreAzureAction(e *execution.PrivateExecutionEnvironment, ctx *plugi
 	azureUsernameEnv := fmt.Sprintf("AZURE_USER=%s", cliUser.Username)
 
 	loginCmd := fmt.Sprintf("login --service-principal -u %s -p %s --tenant %s", appId, clientSecret, tenantId)
-	if output, err := common.ExecuteCommand(ce, request, []string{}, "/opt/blink/az", strings.Split(loginCmd, " ")...); err != nil {
+	if output, err := common.ExecuteCommand(ce, request, []string{}, common.ClisDir+"/az", strings.Split(loginCmd, " ")...); err != nil {
 		return common.GetCommandFailureResponse(output, err)
 	}
 
@@ -452,7 +539,7 @@ func initKubernetesEnvironment(e *execution.PrivateExecutionEnvironment, environ
 	}
 	log.Infof("whoami && pwd && env output: %s", output)
 
-	cmd := fmt.Sprintf("/opt/blink/kubectl config set-cluster cluster --server=%s", apiServerURL)
+	cmd := fmt.Sprintf("%s/kubectl config set-cluster cluster --server=%s", common.ClisDir, apiServerURL)
 	if !verifyCertificate {
 		cmd = fmt.Sprintf("%s --insecure-skip-tls-verify=true", cmd)
 	}
@@ -460,19 +547,19 @@ func initKubernetesEnvironment(e *execution.PrivateExecutionEnvironment, environ
 		return output, err
 	}
 
-	cmd = fmt.Sprintf("/opt/blink/kubectl config set-credentials user --token=%s", bearerToken)
+	cmd = fmt.Sprintf("%s/kubectl config set-credentials user --token=%s", common.ClisDir, bearerToken)
 	output, err = common.ExecuteBash(e, nil, environment, cmd)
 	if err != nil {
 		return output, err
 	}
 
-	cmd = fmt.Sprintf("/opt/blink/kubectl config set-context ctx --cluster=cluster --user=user")
+	cmd = fmt.Sprintf("%s/kubectl config set-context ctx --cluster=cluster --user=user", common.ClisDir)
 	output, err = common.ExecuteBash(e, nil, environment, cmd)
 	if err != nil {
 		return output, err
 	}
 
-	cmd = fmt.Sprintf("/opt/blink/kubectl config use-context ctx")
+	cmd = fmt.Sprintf("%s/kubectl config use-context ctx", common.ClisDir)
 	output, err = common.ExecuteBash(e, nil, environment, cmd)
 	if err != nil {
 		return output, err
@@ -488,7 +575,7 @@ func initGoogleCloudEnvironment(e *execution.PrivateExecutionEnvironment, creden
 	}
 	pathToGCPConfig := path.Join(pathToGCPConfigDirectory, "config")
 
-	err := e.WriteToFile(pathToGCPConfig, []byte(credentials))
+	err := e.WriteToFile(pathToGCPConfig, []byte(credentials), 0600)
 	return pathToGCPConfig, err
 }
 

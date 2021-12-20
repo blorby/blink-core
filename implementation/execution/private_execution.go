@@ -7,7 +7,6 @@ import (
 	"github.com/pkg/errors"
 	uuid "github.com/satori/go.uuid"
 	log "github.com/sirupsen/logrus"
-	"golang.org/x/sys/unix"
 	"io/ioutil"
 	"os"
 	"os/user"
@@ -31,6 +30,10 @@ type PrivateExecutionEnvironment struct {
 	SessionId string
 	User      *user.User
 	NameRoot  string
+}
+
+func (p *PrivateExecutionEnvironment) GetGroupName() string {
+	return p.NameRoot
 }
 
 func (p *PrivateExecutionEnvironment) GetUserName() string {
@@ -67,8 +70,8 @@ func (p *PrivateExecutionEnvironment) CreateTempDirectory() (string, error) {
 	return tempDirectoryPath, err
 }
 
-func (p *PrivateExecutionEnvironment) WriteToFile(name string, bytes []byte) error {
-	err := os.WriteFile(name, bytes, 0700)
+func (p *PrivateExecutionEnvironment) WriteToFile(name string, bytes []byte, perm os.FileMode) error {
+	err := os.WriteFile(name, bytes, perm)
 	if err != nil {
 		return errors.Wrap(err, "Failed writing to file: ")
 	}
@@ -104,41 +107,17 @@ func (p *PrivateExecutionEnvironment) WriteToTempFile(bytes []byte, prefix strin
 	return fullFileName, err
 }
 
-func (p *PrivateExecutionEnvironment) CreateCliUser(cli string, environment []string) (*user.User, error) {
+func (p *PrivateExecutionEnvironment) CreateCliUser(cli string) (*user.User, error) {
 	usr, err := p.createUser(cli)
 	if err != nil {
 		return nil, err
 	}
 
-	err = p.cliUserSetup(cli, usr, environment)
+	err = p.cliUserSetup(cli, usr)
 	if err != nil {
 		p.CleanupCliUser(usr.Username)
 	}
 	return usr, err
-}
-
-func (p *PrivateExecutionEnvironment) WriteProfileFile(usr *user.User, environment []string) error {
-	if len(environment) < 1 {
-		return nil
-	}
-	profileFile := path.Join(usr.HomeDir, ".profile")
-
-	log.Infof("Writing environment variables into: %s", profileFile)
-	file, err := os.OpenFile(profileFile, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
-	if err != nil {
-		return err
-	}
-	defer func(file *os.File) {
-		_ = file.Close()
-		_ = ChOwnMod(profileFile, usr.Uid, usr.Gid)
-	}(file)
-
-	for _, line := range environment {
-		if _, err = file.WriteString(fmt.Sprintf("export %s\n", line)); err != nil {
-			return err
-		}
-	}
-	return err
 }
 
 func sudoersFile(username string) string {
@@ -146,7 +125,7 @@ func sudoersFile(username string) string {
 }
 
 func (p *PrivateExecutionEnvironment) addSudoersEntry(cli string, username string) error {
-	sudoerLine := fmt.Sprintf("%s  ALL=(%s) NOPASSWD: /usr/bin/sh -c /opt/blink/%s *\n", p.User.Username, username, cli)
+	sudoerLine := fmt.Sprintf("%s  ALL=(%s) NOPASSWD:SETENV: %s/%s *\n", p.User.Username, username, common.ClisDir, cli)
 	return os.WriteFile(sudoersFile(username), []byte(sudoerLine), 0440)
 }
 
@@ -154,10 +133,7 @@ func (p *PrivateExecutionEnvironment) removeSudoersEntry(username string) error 
 	return os.Remove(sudoersFile(username))
 }
 
-func (p *PrivateExecutionEnvironment) cliUserSetup(cli string, usr *user.User, environment []string) error {
-	if err := p.WriteProfileFile(usr, environment); err != nil {
-		return errors.Wrap(err, "failed creating .profile file")
-	}
+func (p *PrivateExecutionEnvironment) cliUserSetup(cli string, usr *user.User) error {
 	if err := p.addSudoersEntry(cli, usr.Username); err != nil {
 		return errors.Wrap(err, "failed adding sudoers entry")
 	}
@@ -165,13 +141,13 @@ func (p *PrivateExecutionEnvironment) cliUserSetup(cli string, usr *user.User, e
 }
 
 func (p *PrivateExecutionEnvironment) CleanupCliUser(username string) {
-	if err := RemoveUser(username); err != nil {
-		log.Errorf("failed to remove a user with error: %v", err)
-	}
-
-	if err := p.removeSudoersEntry(username); err != nil {
-		log.Errorf("failed to remove sudoers entry: %v", err)
-	}
+	//if err := RemoveUser(username); err != nil {
+	//	log.Errorf("failed to remove a user with error: %v", err)
+	//}
+	//
+	//if err := p.removeSudoersEntry(username); err != nil {
+	//	log.Errorf("failed to remove sudoers entry: %v", err)
+	//}
 }
 
 type Controller struct {
@@ -204,13 +180,17 @@ func (ctrl *Controller) DestroyExecutionSession(executionId string) error {
 		return errors.Errorf("No execution session found for %s", executionId)
 	}
 
-	// Will delete the directory we created too.
-	err := RemoveUser(session.GetUserName())
-
 	ctrl.executionSessionsMutex.Lock()
 	defer ctrl.executionSessionsMutex.Unlock()
 	delete(ctrl.executionSessions, session.GetSessionId())
-	return err
+
+	// Will delete the directory we created too.
+	err := RemoveUser(session.GetUserName())
+	err2 := RemoveGroup(session.GetGroupName())
+	if err != nil && err2 != nil {
+		return errors.Errorf("Destroy sessions failed, user error: %v, group error: %v", err, err2)
+	}
+	return nil
 }
 
 func (ctrl *Controller) EnsureNameRootSet(pee *PrivateExecutionEnvironment) {
@@ -281,7 +261,16 @@ func AcquirePrivateExecutionSession(executionId string) (*PrivateExecutionEnviro
 }
 
 func (p *PrivateExecutionEnvironment) createExecutionSession() (*user.User, error) {
+	GetExecutionController().EnsureNameRootSet(p)
+
+	if err := p.createGroup(); err != nil {
+		return nil, errors.Wrap(err, "failed to create a group")
+	}
 	return p.createUser("sh")
+}
+
+func (p *PrivateExecutionEnvironment) createGroup() error {
+	return AddNewGroup(p.GetGroupName())
 }
 
 func (p *PrivateExecutionEnvironment) createUser(prefix string) (*user.User, error) {
@@ -290,17 +279,16 @@ func (p *PrivateExecutionEnvironment) createUser(prefix string) (*user.User, err
 		return currentUser, err
 	}
 
-	GetExecutionController().EnsureNameRootSet(p)
 	userName := fmt.Sprintf("%s_%s", prefix, p.NameRoot)
 	userDirectory := fmt.Sprintf("/home/%s", userName)
-	err := os.Mkdir(userDirectory, 0700)
+	err := os.Mkdir(userDirectory, 0770)
 	if err != nil {
 		return nil, errors.Wrap(err, "Failed to create user directory: ")
 	}
 
 	userToCreate := &User{
 		Name:      userName,
-		Group:     "core",
+		Group:     p.GetGroupName(),
 		Shell:     "/bin/sh",
 		Directory: userDirectory,
 	}
@@ -320,8 +308,8 @@ func (p *PrivateExecutionEnvironment) createUser(prefix string) (*user.User, err
 		return nil, err
 	}
 
-	log.Infof("setting umask")
-	unix.Umask(077) // umask uses octal representation
+	//log.Infof("setting umask")
+	//unix.Umask(0007) // umask uses octal representation
 
 	return userInformation, nil
 }
@@ -342,7 +330,7 @@ func ChOwnMod(path string, uid string, gid string) error {
 		return errors.Wrap(err, "Failed to change change ownership of  directory : ")
 	}
 
-	if err := os.Chmod(path, 0700); err != nil {
+	if err := os.Chmod(path, 0770); err != nil {
 		return errors.Wrap(err, "Failed to change user directory permissions: ")
 	}
 	return nil
