@@ -102,7 +102,7 @@ func executeCoreAWSAction(e *execution.PrivateExecutionEnvironment, ctx *plugin.
 		return nil, errors.Wrap(err, "failed to write to .aws/credentials")
 	}
 
-	awsUsernameEnv := fmt.Sprintf("AWS_USER=%s", user.Username)
+	awsUsernameEnv := fmt.Sprintf("%s_USER=%s", strings.ToUpper(cliCommand), user.Username)
 	output, err := common.ExecuteCommand(e, request, []string{awsUsernameEnv}, "/bin/bash", "-c", command)
 	if err != nil {
 		return common.GetCommandFailureResponse(output, err)
@@ -320,15 +320,16 @@ func executeCoreVaultAction(e *execution.PrivateExecutionEnvironment, ctx *plugi
 	}
 	defer e.CleanupCliUser(cliUser.Username)
 	ce := e.CreateCliUserPee(cliUser)
-	vaultUsernameEnv := fmt.Sprintf("VAULT_USER=%s", cliUser.Username)
-
 	// RUN vault login to connect to the vault at the address provided by the user in the connection.
 	if output, err := common.ExecuteCommand(ce, nil, environment, common.ClisDir+"/vault", "login", token.(string)); err != nil {
 		return common.GetCommandFailureResponse(output, err)
 	}
 
+	environment = append(environment, fmt.Sprintf("VAULT_USER=%s", cliUser.Username))
+	log.Infof("VAULT env: %s", strings.Join(environment, " ; "))
+
 	// execute the user command
-	output, err := common.ExecuteBash(e, request, []string{vaultUsernameEnv}, command)
+	output, err := common.ExecuteBash(e, request, environment, command)
 	if err != nil {
 		return common.GetCommandFailureResponse(output, err)
 	}

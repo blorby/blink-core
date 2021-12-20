@@ -141,13 +141,13 @@ func (p *PrivateExecutionEnvironment) cliUserSetup(cli string, usr *user.User) e
 }
 
 func (p *PrivateExecutionEnvironment) CleanupCliUser(username string) {
-	//if err := RemoveUser(username); err != nil {
-	//	log.Errorf("failed to remove a user with error: %v", err)
-	//}
-	//
-	//if err := p.removeSudoersEntry(username); err != nil {
-	//	log.Errorf("failed to remove sudoers entry: %v", err)
-	//}
+	if err := RemoveUser(username); err != nil {
+		log.Errorf("failed to remove a user with error: %v", err)
+	}
+
+	if err := p.removeSudoersEntry(username); err != nil {
+		log.Errorf("failed to remove sudoers entry: %v", err)
+	}
 }
 
 type Controller struct {
