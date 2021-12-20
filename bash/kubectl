@@ -1,0 +1,3 @@
+#!/bin/bash
+
+sudo -u ${K8S_USER} /opt/blink/kubectl $@

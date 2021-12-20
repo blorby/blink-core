@@ -30,7 +30,9 @@ RUN apt-get update && \
     apt-transport-https \
     lsb-release gnupg && \
     update-ca-certificates && \
-    apt-get install -y jq jp unzip git
+    apt-get install -y jq jp unzip git && \
+    mkdir /opt/blink && \
+    mv /usr/bin/git /opt/blink
 
 # Downloading python3 & pip
 RUN apt-get update && \
@@ -48,15 +50,16 @@ RUN apt-get update && \
 RUN curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64-2.2.32.zip" -o awscliv2.zip && \
     unzip awscliv2.zip && \
     ./aws/install && \
-    rm -rf ./aws awscliv2.zip
+    rm -rf ./aws awscliv2.zip && \
+    mv /usr/local/bin/aws /opt/blink
 
 # Downloading eksctl
 RUN curl --silent --location "https://github.com/weaveworks/eksctl/releases/latest/download/eksctl_$(uname -s)_amd64.tar.gz" | tar xz -C /tmp && \
-    mv /tmp/eksctl /usr/local/bin
+    mv /tmp/eksctl /opt/blink
 
 # Downloading kubectl
-RUN curl "https://amazon-eks.s3.us-west-2.amazonaws.com/1.20.4/2021-04-12/bin/linux/amd64/kubectl" -o "/usr/bin/kubectl" && \
-    chmod +x /usr/bin/kubectl
+RUN curl "https://amazon-eks.s3.us-west-2.amazonaws.com/1.20.4/2021-04-12/bin/linux/amd64/kubectl" -o "/opt/blink/kubectl" && \
+    chmod +x /opt/blink/kubectl
 
 
 # Download google cloud cli
@@ -65,7 +68,9 @@ RUN echo "deb [signed-by=/usr/share/keyrings/cloud.google.gpg] http://packages.c
     curl https://packages.cloud.google.com/apt/doc/apt-key.gpg | \
     apt-key --keyring /usr/share/keyrings/cloud.google.gpg  add - && \
     apt-get update -y && \
-    apt-get install -y google-cloud-sdk
+    apt-get install -y google-cloud-sdk && \
+    rm /usr/bin/gcloud && \
+    ln -s /usr/lib/google-cloud-sdk/bin/gcloud /opt/blink/gcloud
 
 # Downloading azure cli
 RUN curl -sL https://packages.microsoft.com/keys/microsoft.asc | \
@@ -74,7 +79,11 @@ RUN curl -sL https://packages.microsoft.com/keys/microsoft.asc | \
     echo "deb [arch=amd64] http://packages.microsoft.com/repos/azure-cli/ $(lsb_release -cs) main" | \
     tee /etc/apt/sources.list.d/azure-cli.list && \
     apt-get update -y && \
-    apt-get install -y azure-cli
+    apt-get install -y azure-cli && \
+    mv /usr/bin/az /opt/blink/
+
+## Install sudo
+RUN apt-get install sudo
 
 ## Install Vault and TerraForm cli.
 RUN curl -fsSL https://apt.releases.hashicorp.com/gpg | apt-key add -
@@ -83,16 +92,19 @@ RUN apt-get update && \
     apt-get install vault && \
     apt-get install terraform && \
     rm -rf /var/lib/apt/lists/* && \
-    setcap cap_ipc_lock= /usr/bin/vault
+    setcap cap_ipc_lock= /usr/bin/vault && \
+    mv /usr/bin/vault /opt/blink/ && \
+    mv /usr/bin/terraform /opt/blink/
 
 # keep this at the end to make better use of caching
 COPY --from=builder /go/bin/blink-core .
 COPY actions actions/
 
-# Create a directory where the executions will be saved.
-RUN mkdir -m 711 /executions
+# copy sudo cli commands
+COPY bash /usr/local/bin
+RUN chmod +x /usr/local/bin/*
+
 RUN groupadd core
-RUN chgrp -R core /executions
 
 # Expose the gRPC port.
 EXPOSE 1337

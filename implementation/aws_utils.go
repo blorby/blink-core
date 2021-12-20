@@ -26,21 +26,6 @@ func detectConnectionType(awsCredentials map[string]string) (credsType, key, val
 	return "userBased", awsCredentials[awsAccessKeyId], awsCredentials[awsSecretAccessKey]
 }
 
-func convertInterfaceMapToStringMap(m map[string]interface{}) map[string]string {
-	mapString := make(map[string]string)
-	for key, value := range m {
-		var strValue string
-		strKey := fmt.Sprintf("%v", key)
-		if value == nil {
-			strValue = ""
-		} else {
-			strValue = fmt.Sprintf("%v", value)
-		}
-		mapString[strKey] = strValue
-	}
-	return mapString
-}
-
 func readFile(path string) (string, error) {
 	data, err := ioutil.ReadFile(path)
 	if err != nil {

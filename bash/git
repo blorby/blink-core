@@ -1,0 +1,3 @@
+#!/bin/bash
+
+sudo -u ${GIT_USER} /opt/blink/git $@

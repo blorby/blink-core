@@ -1,0 +1,3 @@
+#!/bin/bash
+
+HOME=/home/${VAULT_USER} sudo -Eu ${VAULT_USER} /opt/blink/vault $@

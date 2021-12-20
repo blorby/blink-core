@@ -1,0 +1,3 @@
+#!/bin/bash
+
+sudo -u ${EKSCTL_USER} /opt/blink/eksctl $@
