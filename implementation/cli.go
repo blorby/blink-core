@@ -42,10 +42,6 @@ func executeEksctlCli(e *execution.PrivateExecutionEnvironment, ctx *plugin.Acti
 }
 
 func executeCoreAWSAction(e *execution.PrivateExecutionEnvironment, ctx *plugin.ActionContext, request *plugin.ExecuteActionRequest, cliCommand string) ([]byte, error) {
-	credentials, err := ctx.GetCredentials("aws")
-	if err != nil {
-		return nil, err
-	}
 
 	region, ok := request.Parameters[regionParameterName]
 	if !ok {
@@ -57,23 +53,13 @@ func executeCoreAWSAction(e *execution.PrivateExecutionEnvironment, ctx *plugin.
 		return nil, errors.New("command to AWS CLI wasn't provided")
 	}
 
-	m := convertInterfaceMapToStringMap(credentials)
-	sessionType, k, v := detectConnectionType(m)
-	switch sessionType {
-	case "roleBased":
-		sess, _ := session.NewSession(&aws.Config{
-			Region: aws.String(region),
-		})
-
-		svc := sts.New(sess)
-		m[awsAccessKeyId], m[awsSecretAccessKey], m[awsSessionToken], err = assumeRole(svc, k, v)
-		if err != nil {
-			return nil, fmt.Errorf("unable to assume role with error: %w", err)
+	var m map[string]string
+	credentials, err := ctx.GetCredentials("aws")
+	// if no credentials provided, execute without credentials, otherwise resolve assumed role etc.
+	if err == nil {
+		if m, err = resolveAwsCreds(m, credentials, region); err != nil {
+			return nil, err
 		}
-	case "userBased":
-		m[awsSessionToken] = ""
-	default:
-		return nil, fmt.Errorf("invalid credentials: make sure access+secret key are supplied OR role_arn+external_id")
 	}
 
 	user, err := e.CreateCliUser(cliCommand)
@@ -81,7 +67,6 @@ func executeCoreAWSAction(e *execution.PrivateExecutionEnvironment, ctx *plugin.
 		return nil, errors.Wrap(err, "failed to create cli user")
 	}
 	defer e.CleanupCliUser(user.Username)
-
 	cliUserPee := e.CreateCliUserPee(user)
 
 	var lines []string
@@ -109,6 +94,29 @@ func executeCoreAWSAction(e *execution.PrivateExecutionEnvironment, ctx *plugin.
 	}
 
 	return output, nil
+}
+
+func resolveAwsCreds(m map[string]string, credentials map[string]interface{}, region string) (map[string]string, error) {
+	m = convertInterfaceMapToStringMap(credentials)
+	sessionType, k, v := detectConnectionType(m)
+	switch sessionType {
+	case "roleBased":
+		sess, _ := session.NewSession(&aws.Config{
+			Region: aws.String(region),
+		})
+
+		svc := sts.New(sess)
+		var err error
+		m[awsAccessKeyId], m[awsSecretAccessKey], m[awsSessionToken], err = assumeRole(svc, k, v)
+		if err != nil {
+			return nil, errors.Wrap(err, "unable to assume role with error: ")
+		}
+	case "userBased":
+		m[awsSessionToken] = ""
+	default:
+		return nil, errors.New("invalid credentials: make sure access+secret key are supplied OR role_arn+external_id")
+	}
+	return m, nil
 }
 
 func executeCoreGITAction(e *execution.PrivateExecutionEnvironment, ctx *plugin.ActionContext, request *plugin.ExecuteActionRequest) ([]byte, error) {
