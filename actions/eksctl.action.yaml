@@ -10,4 +10,4 @@ parameters:
   Region:
     type: "string"
     description: "Region for aws command"
-    required: true
+    required: false
