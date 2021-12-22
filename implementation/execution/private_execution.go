@@ -279,8 +279,7 @@ func (p *PrivateExecutionEnvironment) createGroup() error {
 
 func (p *PrivateExecutionEnvironment) createUser(prefix string) (*user.User, error) {
 	if runtime.GOOS != "linux" {
-		currentUser, err := user.Current()
-		return currentUser, err
+		return user.Current()
 	}
 
 	userName := fmt.Sprintf("%s_%s", prefix, p.NameRoot)
@@ -307,8 +306,7 @@ func (p *PrivateExecutionEnvironment) createUser(prefix string) (*user.User, err
 		return nil, errors.Wrap(err, "Failed to lookup user for private execution: ")
 	}
 
-	err = ChOwnMod(userDirectory, userInformation.Uid, userInformation.Gid)
-	if err != nil {
+	if err = ChOwnMod(userDirectory, userInformation.Uid, userInformation.Gid); err != nil {
 		return nil, err
 	}
 
