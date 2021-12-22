@@ -37,6 +37,7 @@ func ExecuteCommand(execution Environment, request *plugin.ExecuteActionRequest,
 
 	command.Dir = execution.GetHomeDirectory()
 	environment = append(environment, fmt.Sprintf("HOME=%s", execution.GetHomeDirectory()))
+	environment = append(environment, fmt.Sprintf("PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:%[1]s/.local/bin:%[1]s/bin", execution.GetHomeDirectory()))
 	command.Env = environment
 
 	currentUser, err := user.Current()
