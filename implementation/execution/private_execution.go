@@ -33,7 +33,11 @@ type PrivateExecutionEnvironment struct {
 }
 
 func (p *PrivateExecutionEnvironment) GetGroupName() string {
-	return p.NameRoot
+	// need to make sure the group name is not all numbers to prevent the following scenario with numeric group names:
+	// # groupadd 123
+	// # useradd -m -d /home/sh_778800 -g 123 -s /bin/sh sh_778800
+	//   useradd: group '123' does not exist
+	return fmt.Sprintf("g_%s", p.NameRoot)
 }
 
 func (p *PrivateExecutionEnvironment) GetUserName() string {
