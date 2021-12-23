@@ -7,6 +7,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/sts"
 	"github.com/blinkops/blink-core/implementation/execution"
 	log "github.com/sirupsen/logrus"
+	"net/url"
 	"os"
 	"path"
 	"regexp"
@@ -170,32 +171,42 @@ func executeCoreGITAction(e *execution.PrivateExecutionEnvironment, ctx *plugin.
 }
 
 func initBasicAuthGitCredentials(pee *execution.PrivateExecutionEnvironment, credentials map[string]interface{}, authType string) error {
-	username := credentials["username"]
-	if username == "" {
-		return errors.Errorf("%s basic-auth connection is missing a username", authType)
-	}
 	token := credentials["Token"]
 	if token == "" {
 		return errors.Errorf("%s basic-auth connection is missing a token", authType)
 	}
-	host := credentials["host"]
-	if host == nil || host == "" {
-		host = "github.com"
-		if authType == "gitlab" {
-			host = "gitlab.com"
-		}
-	}
+	host := extractGitHost(credentials, authType)
 	output, err := common.ExecuteBash(pee, nil, nil, common.ClisDir+"/git config --global credential.helper store")
 	if err != nil {
 		return errors.Wrapf(err, "failed to config git credentials.helper with output [%s]: ", output)
 	}
 
-	gitURL := fmt.Sprintf("https://%s:%s@%s\n", username, token, host)
+	gitURL := fmt.Sprintf("https://oauth2:%s@%s\n", token, host)
 	if err = pee.WriteToFile(path.Join(pee.GetHomeDirectory(), ".git-credentials"), []byte(gitURL), 0700); err != nil {
 		return errors.Wrap(err, "failed to write to .git-credentials")
 	}
 
 	return nil
+}
+
+func extractGitHost(credentials map[string]interface{}, authType string) interface{} {
+	requestUrl := credentials["REQUEST_URL"]
+	if requestUrl == nil || requestUrl == "" {
+		return defaultGitHost(authType)
+	}
+	u, err := url.Parse(fmt.Sprintf("%v", requestUrl))
+	if err != nil {
+		log.Warnf("REQUEST_URL [%v] parse error: %v", requestUrl, err)
+		return defaultGitHost(authType)
+	}
+	return u.Host
+}
+
+func defaultGitHost(authType string) interface{} {
+	if authType == "gitlab" {
+		return "gitlab.com"
+	}
+	return "github.com"
 }
 
 func initSshCredentials(pee *execution.PrivateExecutionEnvironment, credentials map[string]interface{}) error {
