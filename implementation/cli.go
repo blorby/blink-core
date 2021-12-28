@@ -1,6 +1,7 @@
 package implementation
 
 import (
+	"bytes"
 	"fmt"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
@@ -71,6 +72,9 @@ func executeCoreAWSAction(e *execution.PrivateExecutionEnvironment, ctx *plugin.
 	awsUsernameEnv := fmt.Sprintf("%s_USER=%s", strings.ToUpper(cliCommand), cliUsername)
 	output, err := common.ExecuteCommand(e, request, []string{awsUsernameEnv}, "/bin/bash", "-c", command)
 	if err != nil {
+		if bytes.HasPrefix(bytes.TrimSpace(output), []byte("Unable to locate credentials")) {
+			return nil, errors.New("Neither a connection nor identity based access were provided")
+		}
 		return common.GetCommandFailureResponse(output, err)
 	}
 
