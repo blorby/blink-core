@@ -96,6 +96,10 @@ RUN apt-get update && \
     mv /usr/bin/vault /opt/blink/ && \
     mv /usr/bin/terraform /opt/blink/
 
+## Install groff to support aws cli.
+RUN apt-get update && \
+    apt-get install groff-base -y
+
 # keep this at the end to make better use of caching
 COPY --from=builder /go/bin/blink-core .
 COPY actions actions/
