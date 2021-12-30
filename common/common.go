@@ -103,7 +103,7 @@ func GetCommandFailureResponse(output []byte, err error) ([]byte, error) {
 			strOut = strOut[:1000] + "..."
 		}
 	}
-	errorAsString := fmt.Sprintf("output (%d bytes): %s; error: %s", outLength, string(output), err.Error())
+	errorAsString := fmt.Sprintf("output (%d bytes): %s; error: %s", outLength, strOut, err.Error())
 	return nil, errors.New(errorAsString)
 }
 
