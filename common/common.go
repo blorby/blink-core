@@ -95,13 +95,15 @@ func ExecuteCommand(execution Environment, request *plugin.ExecuteActionRequest,
 }
 
 func GetCommandFailureResponse(output []byte, err error) ([]byte, error) {
-	errorAsString := ""
-	if len(output) > 0 {
-		errorAsString += string(output) + " - "
+	strOut := ""
+	outLength := len(output)
+	if outLength > 0 {
+		strOut = string(output)
+		if outLength > 1000 {
+			strOut = strOut[:1000] + "..."
+		}
 	}
-
-	errorAsString += "error: " + err.Error()
-
+	errorAsString := fmt.Sprintf("output (%d bytes): %s; error: %s", outLength, string(output), err.Error())
 	return nil, errors.New(errorAsString)
 }
 
