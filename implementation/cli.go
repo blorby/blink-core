@@ -1,6 +1,7 @@
 package implementation
 
 import (
+	"bytes"
 	"fmt"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
@@ -71,6 +72,9 @@ func executeCoreAWSAction(e *execution.PrivateExecutionEnvironment, ctx *plugin.
 	awsUsernameEnv := fmt.Sprintf("%s_USER=%s", strings.ToUpper(cliCommand), cliUsername)
 	output, err := common.ExecuteCommand(e, request, []string{awsUsernameEnv}, "/bin/bash", "-c", command)
 	if err != nil {
+		if bytes.HasPrefix(bytes.TrimSpace(output), []byte("Unable to locate credentials")) {
+			return nil, errors.New("Neither a connection nor identity based access were provided")
+		}
 		return common.GetCommandFailureResponse(output, err)
 	}
 
@@ -474,6 +478,11 @@ func executeCoreGoogleCloudAction(e *execution.PrivateExecutionEnvironment, ctx 
 		return nil, err
 	}
 
+	// we currently don't support oauth. if there's an oauth token return err
+	if _, ok := credentials["Token"]; ok {
+		return nil, errors.New("gcloud CLI currently does not support OAuth connections.")
+	}
+
 	gcpCredentials, ok := credentials["credentials"]
 	if !ok {
 		return nil, errors.New("connection to GCP is invalid")
@@ -515,6 +524,11 @@ func executeCoreAzureAction(e *execution.PrivateExecutionEnvironment, ctx *plugi
 	credentials, err := ctx.GetCredentials("azure")
 	if err != nil {
 		return nil, err
+	}
+
+	// we currently don't support oauth. if there's an oauth token return err
+	if _, ok := credentials["Token"]; ok {
+		return nil, errors.New("az CLI currently does not support OAuth connections.")
 	}
 
 	appId, ok := credentials["app_id"]
