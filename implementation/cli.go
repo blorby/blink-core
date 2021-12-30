@@ -561,11 +561,13 @@ func executeCoreAzureAction(e *execution.PrivateExecutionEnvironment, ctx *plugi
 
 func initKubernetesEnvironment(e *execution.PrivateExecutionEnvironment, environment []string, bearerToken string, apiServerURL string, verifyCertificate bool) ([]byte, error) {
 
-	output, err := common.ExecuteBash(e, nil, environment, "whoami && pwd && env")
-	if err != nil {
-		return output, err
+	if log.IsLevelEnabled(log.TraceLevel) {
+		output, err := common.ExecuteBash(e, nil, environment, "whoami && pwd && env")
+		if err != nil {
+			return output, err
+		}
+		log.Tracef("whoami && pwd && env output: %s", output)
 	}
-	log.Infof("whoami && pwd && env output: %s", output)
 
 	cmd := fmt.Sprintf("%s/kubectl config set-cluster cluster --server=%s", common.ClisDir, apiServerURL)
 	if !verifyCertificate {
@@ -576,7 +578,7 @@ func initKubernetesEnvironment(e *execution.PrivateExecutionEnvironment, environ
 	}
 
 	cmd = fmt.Sprintf("%s/kubectl config set-credentials user --token=%s", common.ClisDir, bearerToken)
-	output, err = common.ExecuteBash(e, nil, environment, cmd)
+	output, err := common.ExecuteBash(e, nil, environment, cmd)
 	if err != nil {
 		return output, err
 	}
