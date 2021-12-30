@@ -272,7 +272,7 @@ func kubectl(e *execution.PrivateExecutionEnvironment, ctx *plugin.ActionContext
 		return nil, errors.New("connection to K8S is invalid")
 	}
 
-	verifyCertificate, ok := credentials["enforce ssl"]
+	verifyCertificate, ok := credentials["verify"]
 	if !ok {
 		return nil, errors.New("connection to K8S is invalid")
 	}
