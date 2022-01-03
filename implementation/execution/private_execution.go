@@ -211,10 +211,15 @@ func (ctrl *Controller) EnsureNameRootSet(pee *PrivateExecutionEnvironment) {
 		return
 	}
 
-	root := pee.SessionId[:6]
+	pee.NameRoot = ctrl.generateName(pee.SessionId)
+
+	ctrl.executionSessions[pee.SessionId] = pee
+}
+
+func (ctrl *Controller) generateName(sessionId string) string {
+	root := sessionId[:6]
 	if !ctrl.nameInUse(root) {
-		pee.NameRoot = root
-		return
+		return root
 	}
 
 	// Handle possible name collision
@@ -223,8 +228,7 @@ func (ctrl *Controller) EnsureNameRootSet(pee *PrivateExecutionEnvironment) {
 		// If there's a collision we'll append running number until there's no collision, e.g. 010101_1, 010101_2, ...
 		candidate := fmt.Sprintf("%s_%d", root, counter)
 		if !ctrl.nameInUse(candidate) {
-			pee.NameRoot = candidate
-			return
+			return candidate
 		}
 		counter++
 	}
@@ -253,7 +257,10 @@ func AcquirePrivateExecutionSession(executionId string) (*PrivateExecutionEnviro
 
 	if session := GetExecutionController().GetExecutionSession(executionId); session != nil {
 		log.Infof("Execution session already exists %s", executionId)
-		return session, nil
+		if session.User != nil && session.NameRoot != "" {
+			return session, nil
+		}
+		log.Warnf("Execution session %s already initializing, creating another session for same execution id", executionId)
 	}
 
 	log.Infof("Creating execution session for %s", executionId)
@@ -274,13 +281,34 @@ func AcquirePrivateExecutionSession(executionId string) (*PrivateExecutionEnviro
 	return session, nil
 }
 
-func (p *PrivateExecutionEnvironment) createExecutionSession() (*user.User, error) {
+func (p *PrivateExecutionEnvironment) createExecutionSession() (shellUser *user.User, err error) {
 	GetExecutionController().EnsureNameRootSet(p)
 
-	if err := p.createGroup(); err != nil {
+	defer func(err *error) {
+		if err != nil && *err != nil {
+			GetExecutionController().executionSessionsMutex.Lock()
+			defer GetExecutionController().executionSessionsMutex.Unlock()
+			delete(GetExecutionController().executionSessions, p.GetSessionId())
+		}
+	}(&err)
+
+	if err = p.createGroup(); err != nil {
 		return nil, errors.Wrap(err, "failed to create a group")
 	}
-	return p.createUser("sh")
+
+	defer func(err *error) {
+		if err != nil && *err != nil {
+			if removeError := RemoveGroup(p.GetGroupName()); removeError != nil {
+				log.Errorf("failed to delete group: %v on recovery from %v", p.GetGroupName(), err)
+			}
+		}
+	}(&err)
+
+	if shellUser, err = p.createUser("sh"); err != nil {
+		return nil, errors.Wrap(err, "failed to create shell user")
+	}
+
+	return
 }
 
 func (p *PrivateExecutionEnvironment) createGroup() error {
