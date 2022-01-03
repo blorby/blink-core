@@ -63,7 +63,10 @@ func (p *PrivateExecutionEnvironment) GetExecutorGid() uint32 {
 }
 
 func (p *PrivateExecutionEnvironment) CreateDirectory(path string) error {
-	_, err := common.ExecuteCommand(p, nil, nil, "/bin/mkdir", "-p", path)
+	output, err := common.ExecuteCommand(p, nil, nil, "/bin/mkdir", "-p", path)
+	if err != nil {
+		log.Debugf("failed to create directory at: %v with output: %v and error: %v", path, string(output), err)
+	}
 	return err
 }
 
