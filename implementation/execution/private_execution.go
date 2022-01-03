@@ -14,11 +14,14 @@ import (
 	"runtime"
 	"strconv"
 	"sync"
+	"time"
 )
 
 const (
-	StopExecutionSessionAction = "stop_execution"
-	randomPasswordLength       = 9
+	StopExecutionSessionAction  = "stop_execution"
+	randomPasswordLength        = 9
+	acquireSessionMaxRetryCount = 10
+	acquireSessionDelay         = 500 * time.Millisecond
 )
 
 var (
@@ -254,13 +257,27 @@ func GetExecutionController() *Controller {
 }
 
 func AcquirePrivateExecutionSession(executionId string) (*PrivateExecutionEnvironment, error) {
+	retry := 0
+	executionExists := false
+	for retry <= acquireSessionMaxRetryCount {
+		session := GetExecutionController().GetExecutionSession(executionId)
+		if session == nil {
+			executionExists = false
+			break
+		}
 
-	if session := GetExecutionController().GetExecutionSession(executionId); session != nil {
-		log.Infof("Execution session already exists %s", executionId)
+		executionExists = true
+		log.Infof("Found execution session with id: %s, Trying to acquire private execution session (%v/%v)", executionId, retry+1, acquireSessionMaxRetryCount)
 		if session.User != nil && session.NameRoot != "" {
+			log.Infof("Successfully acquired execution session with id: %s", executionId)
 			return session, nil
 		}
-		log.Warnf("Execution session %s already initializing, creating another session for same execution id", executionId)
+		retry++
+		time.Sleep(acquireSessionDelay)
+	}
+
+	if retry >= acquireSessionMaxRetryCount && executionExists {
+		return nil, errors.Errorf("Failed to acquire existing execution session with id: %s", executionId)
 	}
 
 	log.Infof("Creating execution session for %s", executionId)
