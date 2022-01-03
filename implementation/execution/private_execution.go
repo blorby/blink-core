@@ -210,20 +210,23 @@ func (ctrl *Controller) EnsureNameRootSet(pee *PrivateExecutionEnvironment) {
 	if pee.NameRoot != "" {
 		return
 	}
+
 	root := pee.SessionId[:6]
+	if !ctrl.nameInUse(root) {
+		pee.NameRoot = root
+		return
+	}
 
 	// Handle possible name collision
 	counter := 1
 	for {
-		candidate := root
-		if ctrl.nameInUse(candidate) {
-			// If there's a collision we'll append running number until there's no collision, e.g. 010101_1, 010101_2, ...
-			candidate = fmt.Sprintf("%s_%d", root, counter)
-			counter++
-		} else {
+		// If there's a collision we'll append running number until there's no collision, e.g. 010101_1, 010101_2, ...
+		candidate := fmt.Sprintf("%s_%d", root, counter)
+		if !ctrl.nameInUse(candidate) {
 			pee.NameRoot = candidate
 			return
 		}
+		counter++
 	}
 }
 
