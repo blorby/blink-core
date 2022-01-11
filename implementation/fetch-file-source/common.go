@@ -15,7 +15,6 @@ const (
 	fetchFileUrl          = "url"
 	fetchFileDestination  = "destination"
 	pathDelimiter         = string(os.PathSeparator)
-	currentDir            = "./"
 	defaultParamDelimiter = "?"
 )
 
@@ -23,11 +22,11 @@ func GetFileDestination(e *execution.PrivateExecutionEnvironment, fileUrl string
 	destination, ok := request.Parameters[fetchFileDestination]
 
 	if !ok {
-		destination = getCurrentDirectoryPath()
+		destination = e.GetHomeDirectory()
 	} else {
 		if _, err := common.ExecuteCommand(e, request, nil, "/bin/mkdir", "-p", destination); err != nil {
 			log.Debugf("Failed to create requested destination dir: %s", destination)
-			destination = getCurrentDirectoryPath()
+			destination = e.GetHomeDirectory()
 		}
 	}
 
@@ -38,16 +37,6 @@ func GetFileDestination(e *execution.PrivateExecutionEnvironment, fileUrl string
 	}
 
 	return destination + fileName, nil
-}
-
-func getCurrentDirectoryPath() string {
-	currentPath, err := os.Getwd()
-
-	if err != nil {
-		return currentDir
-	}
-
-	return currentPath
 }
 
 func GetFileUrl(request *plugin.ExecuteActionRequest) (string, error) {
