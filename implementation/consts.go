@@ -5,9 +5,9 @@ const (
 	jsonKey        = "json"
 	queryKey       = "query"
 	unquotedKey    = "unquoted"
-	mailToKey      = "to"
-	mailSubjectKey = "subject"
-	mailContentKey = "content"
+	mailToKey      = "To"
+	mailSubjectKey = "Subject"
+	mailContentKey = "Content"
 
 	pythonRunnerPath = "/blink-core/python/runner.py"
 	nodejsRunnerPath = "/blink-core/nodejs/runner.js"

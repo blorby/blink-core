@@ -14,8 +14,8 @@ import (
 
 func addAttachmentIfNeeded(request *plugin.ExecuteActionRequest, message *gomail.Message) {
 
-	attachmentName, nOk := request.Parameters["attachment_name"]
-	attachmentBody, bOk := request.Parameters["attachment_body"]
+	attachmentName, nOk := request.Parameters["Attachment Name"]
+	attachmentBody, bOk := request.Parameters["Attachment Body"]
 
 	if !nOk || !bOk {
 		return
