@@ -60,7 +60,7 @@ func AddNewUser(u *User) (string, error) {
 
 	password := base64.StdEncoding.EncodeToString(passwordBase)
 
-	argUser := []string{"-m", "-d", u.Directory, "-g", u.Group, "-s", u.Shell, u.Name}
+	argUser := []string{"-m", "-d", u.Directory, "-g", u.Group, "-G", "core", "-s", u.Shell, u.Name}
 	argPass := []string{"-c", fmt.Sprintf("echo %s:%s | chpasswd", u.Name, password)}
 
 	log.Infof("Running: useradd %s", strings.Join(argUser, " "))
