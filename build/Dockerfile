@@ -109,6 +109,7 @@ COPY bash /usr/local/bin
 RUN chmod +x /usr/local/bin/*
 
 RUN groupadd core
+RUN echo "%core ALL=NOPASSWD: /usr/bin/apt-get*, /usr/bin/apt*, /usr/bin/apt-key*, /usr/bin/add-apt-repository*" > /etc/sudoers.d/core-sudoers
 
 # Expose the gRPC port.
 EXPOSE 1337
