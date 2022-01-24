@@ -1,5 +1,6 @@
 # Describes the action and it's parameters
 name: "bash"
+icon_uri: "https://app.dev.blinkops.com/assets/images/Icons/Companies/Company/XL/Bash.svg"
 description: "Executes user provided bash code"
 enabled: true
 parameters:

@@ -1,4 +1,5 @@
 name: "core"
+icon_uri: "https://app.dev.blinkops.com/assets/images/Icons/Companies/Company/XL/Blink.svg"
 description: "The core Blink plugin"
 tags:
   - code
