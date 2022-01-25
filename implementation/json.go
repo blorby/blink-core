@@ -22,8 +22,19 @@ func executeCoreJQAction(e *execution.PrivateExecutionEnvironment, _ *plugin.Act
 		return nil, errors.New("no query provided for execution")
 	}
 
-	cmd := fmt.Sprintf("/bin/echo '%s' | /bin/jq %s", providedJson, query)
-	outputBytes, execErr := common.ExecuteCommand(e, request, nil, "/bin/bash", "-c", cmd)
+	file, err := e.WriteToTempFile([]byte(providedJson), "jq")
+	if err != nil {
+		log.Error("Failed to to write json to file: ", err)
+		return nil, err
+	}
+	
+	defer func() {
+		rmCmd := fmt.Sprintf("/bin/rm -f %s", file)
+		_, _ = common.ExecuteBash(e, request, nil, rmCmd)
+	}()
+
+	cmd := fmt.Sprintf("/bin/jq %s %s", query, file)
+	outputBytes, execErr := common.ExecuteBash(e, request, nil, cmd)
 
 	if execErr != nil {
 		log.Error("Detected failure, building result! Error: ", execErr)
