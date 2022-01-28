@@ -12,6 +12,7 @@ import (
 	"os"
 	"path"
 	"regexp"
+	"strconv"
 	"strings"
 
 	"github.com/blinkops/blink-core/common"
@@ -109,9 +110,8 @@ func initAwsEnv(e *execution.PrivateExecutionEnvironment, cliCommand string, m m
 	return user.Username, nil
 }
 
-func resolveAwsCreds(m map[string]string, credentials map[string]interface{}, region string) (map[string]string, error) {
-	m = convertInterfaceMapToStringMap(credentials)
-	sessionType, k, v := detectConnectionType(m)
+func resolveAwsCreds(m map[string]string, credentials map[string]string, region string) (map[string]string, error) {
+	sessionType, k, v := detectConnectionType(credentials)
 	switch sessionType {
 	case "roleBased":
 		sess, _ := session.NewSession(&aws.Config{
@@ -174,7 +174,7 @@ func executeCoreGITAction(e *execution.PrivateExecutionEnvironment, ctx *plugin.
 	return output, nil
 }
 
-func initBasicAuthGitCredentials(pee *execution.PrivateExecutionEnvironment, credentials map[string]interface{}, authType string) error {
+func initBasicAuthGitCredentials(pee *execution.PrivateExecutionEnvironment, credentials map[string]string, authType string) error {
 	token := credentials["Token"]
 	if token == "" {
 		return errors.Errorf("%s basic-auth connection is missing a token", authType)
@@ -193,12 +193,12 @@ func initBasicAuthGitCredentials(pee *execution.PrivateExecutionEnvironment, cre
 	return nil
 }
 
-func extractGitHost(credentials map[string]interface{}, authType string) interface{} {
+func extractGitHost(credentials map[string]string, authType string) interface{} {
 	requestUrl := credentials["REQUEST_URL"]
-	if requestUrl == nil || requestUrl == "" {
+	if requestUrl == "" {
 		return defaultGitHost(authType)
 	}
-	u, err := url.Parse(fmt.Sprintf("%v", requestUrl))
+	u, err := url.Parse(requestUrl)
 	if err != nil {
 		log.Warnf("REQUEST_URL [%v] parse error: %v", requestUrl, err)
 		return defaultGitHost(authType)
@@ -213,7 +213,7 @@ func defaultGitHost(authType string) interface{} {
 	return "github.com"
 }
 
-func initSshCredentials(pee *execution.PrivateExecutionEnvironment, credentials map[string]interface{}) error {
+func initSshCredentials(pee *execution.PrivateExecutionEnvironment, credentials map[string]string) error {
 	if err := pee.CreateDirectory(".ssh"); err != nil {
 		return errors.Wrap(err, "failed creating .ssh directory")
 	}
@@ -223,17 +223,17 @@ func initSshCredentials(pee *execution.PrivateExecutionEnvironment, credentials 
 		return errors.Wrap(err, "failed chmod .ssh directory")
 	}
 
-	key, ok := credentials["key"].(string)
+	key, ok := credentials["key"]
 	if !ok || key == "" {
 		return errors.New("missing ssh key")
 	}
 
-	usr, ok := credentials["username"].(string)
+	usr, ok := credentials["username"]
 	if !ok || usr == "" {
 		return errors.New("missing ssh username")
 	}
 
-	passphrase, ok := credentials["passphrase"].(string)
+	passphrase, ok := credentials["passphrase"]
 	if passphrase != "" {
 		return errors.New("core.git does not support ssh connection with passphrase")
 	}
@@ -294,10 +294,7 @@ func kubectl(e *execution.PrivateExecutionEnvironment, ctx *plugin.ActionContext
 		return nil, errors.Wrap(err, "Failed to create kube config directory")
 	}
 
-	verify, ok := verifyCertificate.(bool)
-	if !ok {
-		verify = false
-	}
+	verify, _ := strconv.ParseBool(verifyCertificate)
 
 	if output, err := initKubernetesEnvironment(ce, nil, fmt.Sprintf("%s", bearerToken), fmt.Sprintf("%s", apiServerURL), verify); err != nil {
 		return common.GetCommandFailureResponse(output, err)
@@ -352,7 +349,7 @@ func executeCoreVaultAction(e *execution.PrivateExecutionEnvironment, ctx *plugi
 	defer e.CleanupCliUser(cliUser.Username)
 	ce := e.CreateCliUserPee(cliUser)
 	// RUN vault login to connect to the vault at the address provided by the user in the connection.
-	if output, err := common.ExecuteCommand(ce, nil, environment, common.ClisDir+"/vault", "login", token.(string)); err != nil {
+	if output, err := common.ExecuteCommand(ce, nil, environment, common.ClisDir+"/vault", "login", token); err != nil {
 		return common.GetCommandFailureResponse(output, err)
 	}
 
@@ -417,24 +414,14 @@ func runTerraformCommand(e *execution.PrivateExecutionEnvironment, ctx *plugin.A
 
 	terraformUsernameEnv := fmt.Sprintf("TERRAFORM_USER=%s", cliUser.Username)
 
-	tokenRaw, ok := credentials[terraformToken]
+	token, ok := credentials[terraformToken]
 	if !ok {
 		return nil, errors.New("connection to terraform is invalid")
 	}
 
-	apiServerURLRaw, ok := credentials[terraformAddress]
+	apiServerURL, ok := credentials[terraformAddress]
 	if !ok {
 		return nil, errors.New("connection to terraform is invalid")
-	}
-
-	token, ok := tokenRaw.(string)
-	if !ok {
-		return nil, errors.New("Terraform token is not a string")
-	}
-
-	apiServerURL, ok := apiServerURLRaw.(string)
-	if !ok {
-		return nil, errors.New("Api server url is not a string")
 	}
 
 	// Create credentials file if it doesn't exist and write the user's credentials to it

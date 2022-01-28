@@ -19,9 +19,9 @@ func executeCorePythonAction(execution *execution.PrivateExecutionEnvironment, c
 	}
 
 	structToBeMarshaled := struct {
-		Code        string                                    `json:"code"`
-		Context     map[string]interface{}                    `json:"context"`
-		Connections map[string]connections.ConnectionInstance `json:"connections"`
+		Code        string                                     `json:"code"`
+		Context     map[string]interface{}                     `json:"context"`
+		Connections map[string]*connections.ConnectionInstance `json:"connections"`
 	}{Code: code, Context: ctx.GetAllContextEntries(), Connections: ctx.GetAllConnections()}
 
 	rawJsonBytes, err := json.Marshal(structToBeMarshaled)

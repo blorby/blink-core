@@ -37,33 +37,22 @@ func executeCoreMailAction(_ *execution.PrivateExecutionEnvironment, context *pl
 	if !ok {
 		return nil, errors.New("mail connection does not contain an email address")
 	}
-	if fromEmail, ok = fromEmail.(string); !ok {
-		return nil, errors.New("mail connection contain an invalid email address")
-	}
 
 	password, ok := mailCredentials["password"]
 	if !ok {
 		return nil, errors.New("mail connection does not contain a password")
-	}
-	if password, ok = password.(string); !ok {
-		return nil, errors.New("mail connection contain an invalid password")
 	}
 
 	smtpHost, ok := mailCredentials["smtpHost"]
 	if !ok {
 		return nil, errors.New("mail connection does not contain smtp host server")
 	}
-	if smtpHost, ok = smtpHost.(string); !ok {
-		return nil, errors.New("mail connection contain an invalid smtp host server")
-	}
-
 	smtpPort, ok := mailCredentials["smtpPort"]
 	if !ok {
 		return nil, errors.New("mail connection does not contain smtp host port")
 	}
 
-	smtpPortString := fmt.Sprintf("%v", smtpPort)
-	port, err := strconv.Atoi(smtpPortString)
+	port, err := strconv.Atoi(smtpPort)
 
 	if err != nil {
 		err = fmt.Errorf("provided smtp port is invalid, error: %v", err)
@@ -88,8 +77,7 @@ func executeCoreMailAction(_ *execution.PrivateExecutionEnvironment, context *pl
 		return nil, errors.New("no content provided for execution")
 	}
 
-	fromEmailString := fromEmail.(string)
-	fromEmailDomain := fromEmailString
+	fromEmailDomain := fromEmail
 	if strings.Contains(fromEmailDomain, "@") && strings.Contains(fromEmailDomain, ".") {
 		fromEmailDomain = strings.Split(strings.Split(fromEmailDomain, "@")[1], ".")[0]
 	}
@@ -111,11 +99,11 @@ func executeCoreMailAction(_ *execution.PrivateExecutionEnvironment, context *pl
 	addAttachmentIfNeeded(request, m)
 
 	// Settings for SMTP server
-	d := gomail.NewDialer(smtpHost.(string), port, fromEmail.(string), password.(string))
+	d := gomail.NewDialer(smtpHost, port, fromEmail, password)
 
 	// This is only needed when SSL/TLS certificate is not valid on server.
 	// In production this should be set to false.
-	d.TLSConfig = &tls.Config{InsecureSkipVerify: false, ServerName: smtpHost.(string)}
+	d.TLSConfig = &tls.Config{InsecureSkipVerify: false, ServerName: smtpHost}
 
 	// Now send E-Mail
 	if err := d.DialAndSend(m); err != nil {

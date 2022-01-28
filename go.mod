@@ -1,10 +1,10 @@
 module github.com/blinkops/blink-core
 
-go 1.16
+go 1.17
 
 require (
 	github.com/aws/aws-sdk-go v1.25.37
-	github.com/blinkops/blink-sdk v1.0.51
+	github.com/blinkops/blink-sdk v1.0.72-0.20220128150940-30cf26ac9d37
 	github.com/pkg/errors v0.8.1
 	github.com/satori/go.uuid v1.2.0
 	github.com/sirupsen/logrus v1.8.1
