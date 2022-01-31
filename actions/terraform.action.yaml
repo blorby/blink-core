@@ -1,5 +1,6 @@
 # Describes the action and it's parameters
 name: "terraform"
+collection_name: "terraform"
 description: "Executes TerraForm CLI command"
 enabled: true
 parameters:

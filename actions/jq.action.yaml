@@ -1,4 +1,5 @@
 name: "jq"
+collection_name: "utility"
 description: "JSON Query"
 enabled: true
 parameters:

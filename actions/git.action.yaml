@@ -1,5 +1,6 @@
 # Describes the action and it's parameters
 name: "git"
+collection_name: "git"
 description: "Executes GIT CLI command"
 enabled: true
 parameters:

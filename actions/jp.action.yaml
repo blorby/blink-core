@@ -1,4 +1,5 @@
 name: "jp"
+collection_name: "utility"
 description: "JSON Path Query"
 enabled: true
 parameters:

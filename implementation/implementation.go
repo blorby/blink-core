@@ -100,7 +100,7 @@ func (p *CorePlugin) doExecuteAction(ctx *plugin.ActionContext, request *plugin.
 	}, nil
 }
 
-func (p *CorePlugin) TestCredentials(_ map[string]connections.ConnectionInstance) (*plugin.CredentialsValidationResponse, error) {
+func (p *CorePlugin) TestCredentials(_ map[string]*connections.ConnectionInstance) (*plugin.CredentialsValidationResponse, error) {
 	return &plugin.CredentialsValidationResponse{
 		AreCredentialsValid:   true,
 		RawValidationResponse: []byte("credentials validation is not supported on this plugin :("),
