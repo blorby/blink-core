@@ -1,5 +1,6 @@
 # Describes the action and it's parameters
 name: "vault"
+collection_name: "vault"
 description: "Executes vault CLI command"
 enabled: true
 parameters:

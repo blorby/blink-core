@@ -1,5 +1,6 @@
 # Describes the action and it's parameters
 name: "python"
+collection_name: "python"
 description: "Executes user provided python code"
 enabled: true
 parameters:

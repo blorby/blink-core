@@ -1,5 +1,6 @@
 # Describes the action and it's parameters
 name: "bash"
+collection_name: "bash"
 description: "Executes user provided bash code"
 enabled: true
 parameters:
