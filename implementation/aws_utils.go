@@ -110,7 +110,7 @@ func assumeRoleWithoutCredentials(region string, timeout int32) (map[string]stri
 
 	credentials, err := awsSession.Config.Credentials.Get()
 	if err != nil {
-		return nil, errors.New("Neither a connection nor identity based access were provided")
+		return nil, err
 	}
 
 	return map[string]string{
