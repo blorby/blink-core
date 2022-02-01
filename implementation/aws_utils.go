@@ -1,11 +1,16 @@
 package implementation
 
 import (
+	"errors"
 	"fmt"
+	"github.com/aws/aws-sdk-go/aws/defaults"
+	"github.com/aws/aws-sdk-go/aws/session"
 	"io/ioutil"
 	"math/rand"
+	"net/http"
 	"os"
 	"strconv"
+	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/sts"
@@ -79,4 +84,38 @@ func assumeRole(svc stsiface.STSAPI, role, externalID string) (access, secret, s
 		return assumeRoleWithWebIdentity(svc, role, sessionName)
 	}
 	return assumeRoleWithTrustedIdentity(svc, role, externalID, sessionName)
+}
+
+func assumeRoleWithoutCredentials(region string, timeout int32) (map[string]string, error) {
+	log.Debug("Creating session with no credentials")
+
+	defaultAWSConfiguration := defaults.Get().Config
+	if defaultAWSConfiguration == nil {
+		return nil, errors.New("failed to get default aws configuration")
+	}
+
+	awsConfig := &aws.Config{
+		Region:      aws.String(region),
+		Credentials: defaultAWSConfiguration.Credentials,
+	}
+
+	if timeout > 0 {
+		awsConfig.HTTPClient = &http.Client{Timeout: time.Duration(timeout) * time.Second}
+	}
+
+	awsSession, err := session.NewSession(awsConfig)
+	if err != nil {
+		return nil, fmt.Errorf("unable to create session with error: %v", err)
+	}
+
+	credentials, err := awsSession.Config.Credentials.Get()
+	if err != nil {
+		return nil, errors.New("Neither a connection nor identity based access were provided")
+	}
+
+	return map[string]string{
+		awsAccessKeyId:     credentials.AccessKeyID,
+		awsSecretAccessKey: credentials.SecretAccessKey,
+		awsSessionToken:    credentials.SessionToken,
+	}, nil
 }

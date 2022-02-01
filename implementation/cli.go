@@ -58,8 +58,12 @@ func executeCoreAWSAction(e *execution.PrivateExecutionEnvironment, ctx *plugin.
 	credentials, err := ctx.GetCredentials("aws")
 	// if no credentials provided, execute without credentials, otherwise resolve assumed role etc.
 	if err == nil {
-		if m, err = resolveAwsCreds(m, credentials, region); err != nil {
+		if m, err = resolveAwsCredentials(m, credentials, region); err != nil {
 			log.Warnf("failed resolving aws credentials, will try without credentials: %v", err)
+		}
+	} else {
+		if m, err = assumeRoleWithoutCredentials(region, request.Timeout); err != nil {
+			log.Warnf("failed assuming aws credentials: %v", err)
 		}
 	}
 
@@ -109,7 +113,7 @@ func initAwsEnv(e *execution.PrivateExecutionEnvironment, cliCommand string, m m
 	return user.Username, nil
 }
 
-func resolveAwsCreds(m map[string]string, credentials map[string]interface{}, region string) (map[string]string, error) {
+func resolveAwsCredentials(m map[string]string, credentials map[string]interface{}, region string) (map[string]string, error) {
 	m = convertInterfaceMapToStringMap(credentials)
 	sessionType, k, v := detectConnectionType(m)
 	switch sessionType {
