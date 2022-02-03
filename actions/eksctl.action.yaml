@@ -1,5 +1,6 @@
 # Describes the action and it's parameters
 name: "eksctl"
+collection_name: "k8s"
 description: "Executes eksctl command"
 enabled: true
 parameters:

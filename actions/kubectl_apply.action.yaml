@@ -1,4 +1,5 @@
 name: "kubectl_apply"
+collection_name: "k8s"
 description: "Executes Kubernetes CLI (kubectl) apply command"
 enabled: true
 parameters:

@@ -1,5 +1,6 @@
 # Describes the action and it's parameters
 name: "kubectl"
+collection_name: "k8s"
 description: "Executes Kubernetes CLI (kubectl) command"
 enabled: true
 parameters:

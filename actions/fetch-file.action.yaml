@@ -1,4 +1,5 @@
 name: "fetch_file"
+collection_name: "utility"
 description: "Fetch a file from URL"
 enabled: true
 parameters:
