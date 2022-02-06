@@ -19,8 +19,8 @@ func executeCoreNodejsAction(e *execution.PrivateExecutionEnvironment, ctx *plug
 	}
 
 	structToBeMarshaled := struct {
-		Code        string                                    `json:"code"`
-		Context     map[string]interface{}                    `json:"context"`
+		Code        string                                     `json:"code"`
+		Context     map[string]interface{}                     `json:"context"`
 		Connections map[string]*connections.ConnectionInstance `json:"connections"`
 	}{Code: code, Context: ctx.GetAllContextEntries(), Connections: ctx.GetAllConnections()}
 

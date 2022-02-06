@@ -64,11 +64,5 @@ func getConnnection(ctx *plugin.ActionContext) (string, error) {
 		return "", errors.New("no GitHub token provided")
 	}
 
-	tokenString, ok := gitToken.(string)
-
-	if !ok {
-		return "", errors.New("invalid GitHub token provided")
-	}
-
-	return tokenString, nil
+	return gitToken, nil
 }
