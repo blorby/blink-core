@@ -7,16 +7,3 @@ tags:
   - internal
 
 provider: "blink"
-connection_types:
-  core-mail:
-    reference: core-mail
-  aws:
-    reference: aws
-  kubernetes:
-    reference: kubernetes
-  gcp:
-    reference: gcp
-  azure:
-    refernece: azure
-  github:
-    refernece: github

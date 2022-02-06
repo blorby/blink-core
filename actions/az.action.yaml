@@ -7,3 +7,7 @@ parameters:
     type: "code:bash"
     description: "az command or a script containing az command"
     required: true
+connection_types:
+  azure:
+    reference: azure
+is_connection_required: true

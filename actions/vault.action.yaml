@@ -8,3 +8,7 @@ parameters:
     type: "code:bash"
     description: "vault command or a script containing vault command"
     required: true
+connection_types:
+  vault:
+    reference: vault
+is_connection_required: true

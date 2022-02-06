@@ -8,3 +8,7 @@ parameters:
     type: "code:bash"
     description: "kubectl command or a script containing kubectl command"
     required: true
+connection_types:
+  kubernetes:
+    reference: kubernetes
+is_connection_required: true

@@ -5,9 +5,12 @@ enabled: true
 parameters:
   Command:
     type: "code:bash"
-    description: "aws command or a script containing aws command"
+    description: "AWS command or a script containing AWS command. If no Region is specified, and the requested service supports Regions, AWS routes the request to us-east-1 by default. To route the request to a different region, use the 'Region' parameter or the --region flag."
     required: true
   Region:
     type: "string"
-    description: "Region for aws command"
+    description: "Region for aws command. If no Region is specified, and the requested service supports Regions, AWS routes the request to us-east-1 by default."
     required: false
+connection_types:
+  aws:
+    reference: aws

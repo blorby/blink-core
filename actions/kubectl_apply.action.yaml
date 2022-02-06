@@ -7,3 +7,7 @@ parameters:
     type: "code:yaml"
     description: "The yaml content to apply"
     required: true
+connection_types:
+  kubernetes:
+    reference: kubernetes
+is_connection_required: true
