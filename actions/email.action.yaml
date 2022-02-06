@@ -29,3 +29,6 @@ parameters:
     description: "The body of the attachment"
     placeholder: "Enter the attachment body"
     required: false
+connection_types:
+  core-mail:
+    reference: core-mail

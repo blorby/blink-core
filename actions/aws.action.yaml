@@ -11,3 +11,6 @@ parameters:
     type: "string"
     description: "Region for aws command. If no Region is specified, and the requested service supports Regions, AWS routes the request to us-east-1 by default."
     required: false
+connection_types:
+  aws:
+    reference: aws

@@ -12,3 +12,6 @@ parameters:
     type: "string"
     description: "Region for aws command"
     required: false
+connection_types:
+  aws:
+    reference: aws

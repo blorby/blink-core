@@ -11,3 +11,8 @@ parameters:
     type: "string"
     description: "Fetch to destination"
     required: false
+connection_types:
+  github:
+    reference: github
+  gitlab:
+    reference: github
