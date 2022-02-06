@@ -12,4 +12,4 @@ connection_types:
   github:
     reference: github
   gitlab:
-    reference: github
+    reference: gitlab
