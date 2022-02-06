@@ -8,3 +8,7 @@ parameters:
     type: "code:bash"
     description: "terraform command or a script containing terraform command"
     required: true
+connection_types:
+  terraform:
+    reference: terraform
+is_connection_required: true

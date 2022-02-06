@@ -8,3 +8,8 @@ parameters:
     type: "code:bash"
     description: "git command"
     required: true
+connection_types:
+  github:
+    reference: github
+  gitlab:
+    reference: gitlab

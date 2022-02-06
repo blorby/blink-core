@@ -7,3 +7,7 @@ parameters:
     type: "code:bash"
     description: "gcloud command or a script containing gcloud command"
     required: true
+connection_types:
+  gcp:
+    reference: gcp
+is_connection_required: true
