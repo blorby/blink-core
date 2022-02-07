@@ -57,13 +57,12 @@ def entry_point(raw_input_file):
 
     context = Context(decoded_input['context'])
     code_to_be_executed = decoded_input['code']
-    connections = build_connection_instances(decoded_input['connections'])
 
     try:
         output_buffer = StringIO()
         sys.stdout = output_buffer
 
-        execute_user_supplied_code(context=context, connections=connections, code_to_be_executed=code_to_be_executed)
+        execute_user_supplied_code(context=context, code_to_be_executed=code_to_be_executed)
     except Exception as e:
         # Note: All 'by value' list accesses are safe due to the python spec.
         error_line = StackSummary.extract(traceback.walk_tb(sys.exc_info()[2]))[-1].lineno
