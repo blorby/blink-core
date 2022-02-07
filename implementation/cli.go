@@ -55,16 +55,15 @@ func executeCoreAWSAction(e *execution.PrivateExecutionEnvironment, ctx *plugin.
 		return nil, errors.New("command to AWS CLI wasn't provided")
 	}
 
-	var m map[string]string
 	credentials, err := ctx.GetCredentials("aws")
 	// if no credentials provided, execute without credentials, otherwise resolve assumed role etc.
 	if err == nil {
-		if m, err = resolveAwsCreds(m, credentials, region); err != nil {
+		if credentials, err = resolveAwsCreds(credentials, region); err != nil {
 			log.Warnf("failed resolving aws credentials, will try without credentials: %v", err)
 		}
 	}
 
-	cliUsername, err := initAwsEnv(e, cliCommand, m, region)
+	cliUsername, err := initAwsEnv(e, cliCommand, credentials, region)
 	defer e.CleanupCliUser(cliUsername)
 
 	if err != nil {
@@ -110,7 +109,7 @@ func initAwsEnv(e *execution.PrivateExecutionEnvironment, cliCommand string, m m
 	return user.Username, nil
 }
 
-func resolveAwsCreds(m map[string]string, credentials map[string]string, region string) (map[string]string, error) {
+func resolveAwsCreds(credentials map[string]string, region string) (map[string]string, error) {
 	sessionType, k, v := detectConnectionType(credentials)
 	switch sessionType {
 	case "roleBased":
@@ -120,16 +119,16 @@ func resolveAwsCreds(m map[string]string, credentials map[string]string, region 
 
 		svc := sts.New(sess)
 		var err error
-		m[awsAccessKeyId], m[awsSecretAccessKey], m[awsSessionToken], err = assumeRole(svc, k, v)
+		credentials[awsAccessKeyId], credentials[awsSecretAccessKey], credentials[awsSessionToken], err = assumeRole(svc, k, v)
 		if err != nil {
 			return nil, errors.Wrap(err, "unable to assume role with error: ")
 		}
 	case "userBased":
-		m[awsSessionToken] = ""
+		credentials[awsSessionToken] = ""
 	default:
 		return nil, errors.New("invalid credentials: make sure access+secret key are supplied OR role_arn+external_id")
 	}
-	return m, nil
+	return credentials, nil
 }
 
 func executeCoreGITAction(e *execution.PrivateExecutionEnvironment, ctx *plugin.ActionContext, request *plugin.ExecuteActionRequest) ([]byte, error) {
