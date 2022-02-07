@@ -44,18 +44,8 @@ def decode_raw_input(raw_input_file) -> dict:
     return decoded_input_json
 
 
-def build_connection_instances(raw_connections: dict):
-    concrete_connections = {}
-    for name, connection in raw_connections.items():
-        concrete_connections[name] = Connection(name=name,
-                                                id=connection['Id'],
-                                                token=connection['Token'],
-                                                vault_url=connection['VaultUrl'])
 
-    return concrete_connections
-
-
-def execute_user_supplied_code(context: Context, connections: Dict[str, Connection], code_to_be_executed: str):
+def execute_user_supplied_code(context: Context, code_to_be_executed: str):
     with tempfile.NamedTemporaryFile(mode='w') as f:
         f.write(code_to_be_executed)
         f.flush()
