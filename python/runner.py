@@ -10,7 +10,6 @@ from traceback import StackSummary
 from typing import Dict
 
 from context import Context
-from connection import Connection
 from exception import CodeExecutionError
 
 
