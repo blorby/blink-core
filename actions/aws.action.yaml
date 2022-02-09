@@ -14,3 +14,4 @@ parameters:
 connection_types:
   aws:
     reference: aws
+is_connection_optional: "true"

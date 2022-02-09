@@ -11,4 +11,3 @@ parameters:
 connection_types:
   kubernetes:
     reference: kubernetes
-is_connection_required: true

@@ -13,3 +13,4 @@ connection_types:
     reference: github
   gitlab:
     reference: gitlab
+is_connection_optional: "true"

@@ -10,4 +10,3 @@ parameters:
 connection_types:
   azure:
     reference: azure
-is_connection_required: true
