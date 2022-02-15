@@ -11,6 +11,12 @@ parameters:
     type: "string"
     description: "Fetch to destination"
     required: false
+  show_output:
+    type: "bool"
+    display_name: "Show Output"
+    description: "Display the content of the file."
+    required: false
+    default: false
 connection_types:
   github:
     reference: github
