@@ -30,6 +30,9 @@ type User struct {
 }
 
 func AddNewGroup(name string) error {
+	if runtime.GOOS != "linux" {
+		return nil
+	}
 	log.Infof("Adding new group named %s", name)
 	groupCmd := exec.Command("groupadd", name)
 	groupCmdOutput, err := groupCmd.CombinedOutput()
@@ -41,6 +44,9 @@ func AddNewGroup(name string) error {
 }
 
 func RemoveGroup(name string) error {
+	if runtime.GOOS != "linux" {
+		return nil
+	}
 	log.Infof("Removing group named %s", name)
 	groupCmd := exec.Command("groupdel", name)
 	groupCmdOutput, err := groupCmd.CombinedOutput()
