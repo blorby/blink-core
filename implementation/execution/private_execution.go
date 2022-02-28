@@ -220,6 +220,10 @@ func (ctrl *Controller) EnsureNameRootSet(pee *PrivateExecutionEnvironment) {
 }
 
 func (ctrl *Controller) generateName(sessionId string) string {
+	if len(sessionId) < 6 {
+		return sessionId
+	}
+
 	root := sessionId[:6]
 	if !ctrl.nameInUse(root) {
 		return root
