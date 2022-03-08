@@ -104,11 +104,11 @@ func GetCommandFailureResponse(output []byte, err error, cli bool) ([]byte, erro
 		}
 	}
 
-	errorAsString := fmt.Sprintf("output (%d bytes): %s; error: %s", outLength, strOut, err.Error())
+	errorAsString := fmt.Sprintf("%s; error: %s", strOut, err.Error())
 	if cli {
 		return []byte(errorAsString), CLIError
 	}
-
+	errorAsString = fmt.Sprintf("output (%d bytes): %s", outLength, errorAsString)
 	return nil, errors.New(errorAsString)
 }
 
