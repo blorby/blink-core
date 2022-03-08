@@ -14,14 +14,10 @@ import (
 	"runtime"
 	"strconv"
 	"sync"
-	"time"
 )
 
 const (
-	StopExecutionSessionAction  = "stop_execution"
-	randomPasswordLength        = 9
-	acquireSessionMaxRetryCount = 10
-	acquireSessionDelay         = 500 * time.Millisecond
+	StopExecutionSessionAction = "stop_execution"
 )
 
 var (
@@ -261,27 +257,12 @@ func GetExecutionController() *Controller {
 }
 
 func AcquirePrivateExecutionSession(executionId string) (*PrivateExecutionEnvironment, error) {
-	retry := 0
-	executionExists := false
-	for retry <= acquireSessionMaxRetryCount {
-		session := GetExecutionController().GetExecutionSession(executionId)
-		if session == nil {
-			executionExists = false
-			break
-		}
-
-		executionExists = true
-		log.Infof("Found execution session with id: %s, Trying to acquire private execution session (%v/%v)", executionId, retry+1, acquireSessionMaxRetryCount)
+	if session := GetExecutionController().GetExecutionSession(executionId); session != nil {
+		log.Infof("Execution session already exists %s", executionId)
 		if session.User != nil && session.NameRoot != "" {
-			log.Infof("Successfully acquired execution session with id: %s", executionId)
 			return session, nil
 		}
-		retry++
-		time.Sleep(acquireSessionDelay)
-	}
-
-	if retry >= acquireSessionMaxRetryCount && executionExists {
-		return nil, errors.Errorf("Failed to acquire existing execution session with id: %s", executionId)
+		log.Warnf("Execution session %s already initializing, creating another session for same execution id", executionId)
 	}
 
 	log.Infof("Creating execution session for %s", executionId)
@@ -305,25 +286,9 @@ func AcquirePrivateExecutionSession(executionId string) (*PrivateExecutionEnviro
 func (p *PrivateExecutionEnvironment) createExecutionSession() (shellUser *user.User, err error) {
 	GetExecutionController().EnsureNameRootSet(p)
 
-	defer func(err *error) {
-		if err != nil && *err != nil {
-			GetExecutionController().executionSessionsMutex.Lock()
-			defer GetExecutionController().executionSessionsMutex.Unlock()
-			delete(GetExecutionController().executionSessions, p.GetSessionId())
-		}
-	}(&err)
-
 	if err = p.createGroup(); err != nil {
-		return nil, errors.Wrap(err, "failed to create a group")
+		return nil, errors.Wrap(err, "create a group")
 	}
-
-	defer func(err *error) {
-		if err != nil && *err != nil {
-			if removeError := RemoveGroup(p.GetGroupName()); removeError != nil {
-				log.Errorf("failed to delete group: %v on recovery from %v", p.GetGroupName(), err)
-			}
-		}
-	}(&err)
 
 	if shellUser, err = p.createUser("sh"); err != nil {
 		return nil, errors.Wrap(err, "failed to create shell user")
@@ -343,8 +308,7 @@ func (p *PrivateExecutionEnvironment) createUser(prefix string) (*user.User, err
 
 	userName := fmt.Sprintf("%s_%s", prefix, p.NameRoot)
 	userDirectory := fmt.Sprintf("/home/%s", userName)
-	err := os.Mkdir(userDirectory, 0770)
-	if err != nil {
+	if err := os.Mkdir(userDirectory, 0770); err != nil {
 		return nil, errors.Wrap(err, "Failed to create user directory: ")
 	}
 
@@ -354,9 +318,7 @@ func (p *PrivateExecutionEnvironment) createUser(prefix string) (*user.User, err
 		Shell:     "/bin/sh",
 		Directory: userDirectory,
 	}
-
-	_, err = AddNewUser(userToCreate)
-	if err != nil {
+	if err := AddNewUser(userToCreate); err != nil {
 		return nil, err
 	}
 
@@ -368,9 +330,6 @@ func (p *PrivateExecutionEnvironment) createUser(prefix string) (*user.User, err
 	if err = ChOwnMod(userDirectory, userInformation.Uid, userInformation.Gid); err != nil {
 		return nil, err
 	}
-
-	//log.Infof("setting umask")
-	//unix.Umask(0007) // umask uses octal representation
 
 	return userInformation, nil
 }
