@@ -94,7 +94,7 @@ func ExecuteCommand(execution Environment, request *plugin.ExecuteActionRequest,
 	return outputBytes, execErr
 }
 
-func GetCommandFailureResponse(output []byte, err error) ([]byte, error) {
+func GetCommandFailureResponse(output []byte, err error, cli bool) ([]byte, error) {
 	strOut := ""
 	outLength := len(output)
 	if outLength > 0 {
@@ -103,7 +103,12 @@ func GetCommandFailureResponse(output []byte, err error) ([]byte, error) {
 			strOut = strOut[:1000] + "..."
 		}
 	}
+
 	errorAsString := fmt.Sprintf("output (%d bytes): %s; error: %s", outLength, strOut, err.Error())
+	if cli {
+		return []byte(errorAsString), CLIError
+	}
+
 	return nil, errors.New(errorAsString)
 }
 

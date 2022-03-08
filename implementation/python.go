@@ -6,7 +6,6 @@ import (
 	"github.com/blinkops/blink-core/common"
 	"github.com/blinkops/blink-core/implementation/execution"
 	"github.com/blinkops/blink-sdk/plugin"
-	"github.com/blinkops/blink-sdk/plugin/connections"
 	log "github.com/sirupsen/logrus"
 	"os"
 )
@@ -18,12 +17,7 @@ func executeCorePythonAction(execution *execution.PrivateExecutionEnvironment, c
 		return nil, errors.New("no code provided for execution")
 	}
 
-	structToBeMarshaled := struct {
-		Code        string                                     `json:"code"`
-		Context     map[string]interface{}                     `json:"context"`
-		Connections map[string]*connections.ConnectionInstance `json:"connections"`
-	}{Code: code, Context: ctx.GetAllContextEntries(), Connections: ctx.GetAllConnections()}
-
+	structToBeMarshaled := RunnerCodeStructure{Code: code, Context: ctx.GetAllContextEntries(), Connections: ctx.GetAllConnections()}
 	rawJsonBytes, err := json.Marshal(structToBeMarshaled)
 	if err != nil {
 		log.Error("Failed to marshal the code execution request, err: ", err)
@@ -37,26 +31,18 @@ func executeCorePythonAction(execution *execution.PrivateExecutionEnvironment, c
 	defer func(name string) { _ = os.Remove(name) }(filePath)
 
 	output, err := common.ExecuteCommand(execution, request, nil, "/bin/python", pythonRunnerPath, "--input", filePath)
-
-	resultJson := struct {
-		Context map[string]interface{} `json:"context"`
-		Log     string                 `json:"log"`
-		Output  string                 `json:"output"`
-		Error   string                 `json:"error"`
-	}{}
-
 	if err != nil {
-		return common.GetCommandFailureResponse(output, err)
+		return common.GetCommandFailureResponse(output, err, true)
 	}
 
-	err = json.Unmarshal(output, &resultJson)
-	if err != nil {
+	resultJson := RunnerCodeResponse{}
+	if err = json.Unmarshal(output, &resultJson); err != nil {
 		log.Error("Failed to unmarshal result, err: ", err)
 		return nil, err
 	}
 
 	if resultJson.Error != "" {
-		return common.GetCommandFailureResponse([]byte(resultJson.Output), errors.New(resultJson.Error))
+		return common.GetCommandFailureResponse([]byte(resultJson.Output), errors.New(resultJson.Error), true)
 	}
 
 	ctx.ReplaceContext(resultJson.Context)

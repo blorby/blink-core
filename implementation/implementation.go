@@ -1,6 +1,7 @@
 package implementation
 
 import (
+	"github.com/blinkops/blink-core/common"
 	"github.com/blinkops/blink-core/implementation/execution"
 	"github.com/blinkops/blink-sdk/plugin"
 	"github.com/blinkops/blink-sdk/plugin/actions"
@@ -56,36 +57,21 @@ func (p *CorePlugin) doExecuteAction(ctx *plugin.ActionContext, request *plugin.
 	log.Debugf("Executing action: %v\n Context: %v", *request, ctx.GetAllContextEntries())
 
 	resultBytes, err := p.TryRouteExecutionRelatedAction(request.Name, request)
-	if err == errActionNotFound {
-
-		executionId := ctx.GetAllContextEntries()["execution_id"]
-		if executionId == nil {
-			return nil, errors.New("Execution id is missing from context")
-		}
-
-		executionIdCasted, ok := executionId.(string)
-		if !ok {
-			return nil, errors.New("Execution id is not a string...")
-		}
-
-		session, err := execution.AcquirePrivateExecutionSession(executionIdCasted)
-		if err != nil {
-			return nil, err
-		}
-
-		actionHandler, ok := p.supportedActions[request.Name]
-		if !ok {
-			return nil, errors.New("action is not supported: " + request.Name)
-		}
-
-		resultBytes, err = actionHandler(session, ctx, request)
-		if err != nil {
-			return nil, err
-		}
-	}
-
 	if err != nil && err != errActionNotFound {
 		return nil, err
+	}
+
+	errorCode := common.ErrorCodeOK
+	if err == errActionNotFound {
+		resultBytes, err = p.executeAction(ctx, request)
+		if err == common.CLIError {
+			errorCode = common.ErrorCodeCLIError
+			err = nil
+		}
+
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	log.Debugf("Finished executing action: %v", request)
@@ -95,9 +81,33 @@ func (p *CorePlugin) doExecuteAction(ctx *plugin.ActionContext, request *plugin.
 	}
 
 	return &plugin.ExecuteActionResponse{
-		ErrorCode: 0,
+		ErrorCode: errorCode,
 		Result:    resultBytes,
 	}, nil
+}
+
+func (p *CorePlugin) executeAction(ctx *plugin.ActionContext, request *plugin.ExecuteActionRequest) ([]byte, error) {
+	executionId := ctx.GetAllContextEntries()["execution_id"]
+	if executionId == nil {
+		return nil, errors.New("Execution id is missing from context")
+	}
+
+	executionIdCasted, ok := executionId.(string)
+	if !ok {
+		return nil, errors.New("Execution id is not a string...")
+	}
+
+	session, err := execution.AcquirePrivateExecutionSession(executionIdCasted)
+	if err != nil {
+		return nil, err
+	}
+
+	actionHandler, ok := p.supportedActions[request.Name]
+	if !ok {
+		return nil, errors.New("action is not supported: " + request.Name)
+	}
+
+	return actionHandler(session, ctx, request)
 }
 
 func (p *CorePlugin) TestCredentials(_ map[string]*connections.ConnectionInstance) (*plugin.CredentialsValidationResponse, error) {
