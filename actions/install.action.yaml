@@ -1,0 +1,8 @@
+name: "install"
+description: "apt-get install package"
+enabled: true
+parameters:
+  package:
+    type: "string"
+    description: "name of the apt package to install"
+    required: true
