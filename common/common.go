@@ -94,7 +94,11 @@ func ExecuteCommand(execution Environment, request *plugin.ExecuteActionRequest,
 	return outputBytes, execErr
 }
 
-func GetCommandFailureResponse(output []byte, err error) ([]byte, error) {
+func GetCommandFailureResponse(output []byte, err error, cli bool) ([]byte, error) {
+	if cli {
+		return []byte(fmt.Sprintf("%s; error: %s", string(output), err.Error())), CLIError
+	}
+
 	strOut := ""
 	outLength := len(output)
 	if outLength > 0 {
@@ -103,8 +107,8 @@ func GetCommandFailureResponse(output []byte, err error) ([]byte, error) {
 			strOut = strOut[:1000] + "..."
 		}
 	}
-	errorAsString := fmt.Sprintf("output (%d bytes): %s; error: %s", outLength, strOut, err.Error())
-	return nil, errors.New(errorAsString)
+
+	return nil, errors.New(fmt.Sprintf("output (%d bytes): %s; error: %s", outLength, strOut, err))
 }
 
 func WriteToTempFile(execution Environment, bytes []byte, prefix string) (string, error) {

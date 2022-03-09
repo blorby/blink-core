@@ -75,7 +75,7 @@ func executeCoreAWSAction(e *execution.PrivateExecutionEnvironment, ctx *plugin.
 		if bytes.HasPrefix(bytes.TrimSpace(output), []byte("Unable to locate credentials")) {
 			return nil, errors.New("Neither a connection nor identity based access were provided")
 		}
-		return common.GetCommandFailureResponse(output, err)
+		return common.GetCommandFailureResponse(output, err, true)
 	}
 
 	return output, nil
@@ -167,7 +167,7 @@ func executeCoreGITAction(e *execution.PrivateExecutionEnvironment, ctx *plugin.
 
 	output, err := common.ExecuteCommand(e, request, envList, "/bin/bash", "-c", command)
 	if err != nil {
-		return common.GetCommandFailureResponse(output, err)
+		return common.GetCommandFailureResponse(output, err, true)
 	}
 
 	return output, nil
@@ -296,7 +296,7 @@ func kubectl(e *execution.PrivateExecutionEnvironment, ctx *plugin.ActionContext
 	verify, _ := strconv.ParseBool(verifyCertificate)
 
 	if output, err := initKubernetesEnvironment(ce, nil, fmt.Sprintf("%s", bearerToken), fmt.Sprintf("%s", apiServerURL), verify); err != nil {
-		return common.GetCommandFailureResponse(output, err)
+		return common.GetCommandFailureResponse(output, err, false)
 	}
 
 	if prepFn != nil {
@@ -310,7 +310,7 @@ func kubectl(e *execution.PrivateExecutionEnvironment, ctx *plugin.ActionContext
 	k8sUserEnv := fmt.Sprintf("K8S_USER=%s", cliUser.Username)
 	output, err := common.ExecuteBash(e, request, []string{k8sUserEnv}, command)
 	if err != nil {
-		return common.GetCommandFailureResponse(output, err)
+		return common.GetCommandFailureResponse(output, err, true)
 	}
 
 	return output, nil
@@ -349,7 +349,7 @@ func executeCoreVaultAction(e *execution.PrivateExecutionEnvironment, ctx *plugi
 	ce := e.CreateCliUserPee(cliUser)
 	// RUN vault login to connect to the vault at the address provided by the user in the connection.
 	if output, err := common.ExecuteCommand(ce, nil, environment, common.ClisDir+"/vault", "login", token); err != nil {
-		return common.GetCommandFailureResponse(output, err)
+		return common.GetCommandFailureResponse(output, err, false)
 	}
 
 	environment = append(environment, fmt.Sprintf("VAULT_USER=%s", cliUser.Username))
@@ -358,7 +358,7 @@ func executeCoreVaultAction(e *execution.PrivateExecutionEnvironment, ctx *plugi
 	// execute the user command
 	output, err := common.ExecuteBash(e, request, environment, command)
 	if err != nil {
-		return common.GetCommandFailureResponse(output, err)
+		return common.GetCommandFailureResponse(output, err, true)
 	}
 
 	return output, nil
@@ -385,15 +385,10 @@ func executeCoreTerraFormAction(e *execution.PrivateExecutionEnvironment, ctx *p
 			return nil, errors.New("terraform commands must start with \"terraform\" prefix")
 		}
 
-		_, commandFailureResponse := common.GetCommandFailureResponse(output, err)
-
-		// Replace characters which make the output unreadable
-		outputStr := fixTerraFormOutput(commandFailureResponse.Error())
-
-		return nil, errors.New(outputStr)
+		response, err := common.GetCommandFailureResponse(output, err, true)
+		return fixTerraFormOutput(response), err
 	}
-
-	return []byte(fixTerraFormOutput(string(output))), nil
+	return fixTerraFormOutput(output), nil
 }
 
 func runTerraformCommand(e *execution.PrivateExecutionEnvironment, ctx *plugin.ActionContext, request *plugin.ExecuteActionRequest) ([]byte, error) {
@@ -490,7 +485,7 @@ func executeCoreGoogleCloudAction(e *execution.PrivateExecutionEnvironment, ctx 
 
 	pathToConfig, err := initGoogleCloudEnvironment(ce, fmt.Sprintf("%s", gcpCredentials))
 	if err != nil {
-		return common.GetCommandFailureResponse(nil, err)
+		return common.GetCommandFailureResponse(nil, err, false)
 	}
 
 	cliEnv := []string{
@@ -500,7 +495,7 @@ func executeCoreGoogleCloudAction(e *execution.PrivateExecutionEnvironment, ctx 
 
 	output, err := common.ExecuteCommand(e, request, cliEnv, "/bin/bash", "-c", command)
 	if err != nil {
-		return common.GetCommandFailureResponse(output, err)
+		return common.GetCommandFailureResponse(output, err, true)
 	}
 
 	return output, nil
@@ -548,12 +543,12 @@ func executeCoreAzureAction(e *execution.PrivateExecutionEnvironment, ctx *plugi
 
 	loginCmd := fmt.Sprintf("login --service-principal -u %s -p %s --tenant %s", appId, clientSecret, tenantId)
 	if output, err := common.ExecuteCommand(ce, request, []string{}, common.ClisDir+"/az", strings.Split(loginCmd, " ")...); err != nil {
-		return common.GetCommandFailureResponse(output, err)
+		return common.GetCommandFailureResponse(output, err, false)
 	}
 
 	output, err := common.ExecuteCommand(e, request, []string{azureUsernameEnv}, "/bin/bash", "-c", command)
 	if err != nil {
-		return common.GetCommandFailureResponse(output, err)
+		return common.GetCommandFailureResponse(output, err, true)
 	}
 
 	return output, nil
@@ -663,12 +658,14 @@ func validateTerraFormCommand(command string) ([]byte, error) {
 	return nil, nil
 }
 
-func fixTerraFormOutput(output string) string {
+// fixTerraFormOutput replaces characters which make the output unreadable
+func fixTerraFormOutput(output []byte) []byte {
+	outputAsString := string(output)
 	exp1 := regexp.MustCompile("\\[[0-9]+m")
 	exp2 := regexp.MustCompile("[╷│╵\u001B]+?")
 	exp3 := regexp.MustCompile(" +")
-	output = exp1.ReplaceAllString(output, "")
-	output = exp2.ReplaceAllString(output, "")
-	output = exp3.ReplaceAllString(output, " ")
-	return output
+	outputAsString = exp1.ReplaceAllString(outputAsString, "")
+	outputAsString = exp2.ReplaceAllString(outputAsString, "")
+	outputAsString = exp3.ReplaceAllString(outputAsString, " ")
+	return []byte(outputAsString)
 }

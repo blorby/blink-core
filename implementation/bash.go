@@ -19,7 +19,7 @@ func executeCoreBashAction(execution *execution.PrivateExecutionEnvironment, ctx
 
 	output, err := common.ExecuteCommand(execution, request, environmentVariables, "/bin/bash", "-c", fmt.Sprintf("%s", code))
 	if err != nil {
-		return common.GetCommandFailureResponse(output, err)
+		return common.GetCommandFailureResponse(output, err, true)
 	}
 
 	return output, nil

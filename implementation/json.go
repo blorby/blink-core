@@ -77,7 +77,7 @@ func executeCoreJPAction(e *execution.PrivateExecutionEnvironment, _ *plugin.Act
 	output, err := common.ExecuteCommand(e, request, nil, "/bin/bash", "-c", cmd)
 
 	if err != nil {
-		return common.GetCommandFailureResponse(output, err)
+		return common.GetCommandFailureResponse(output, err, true)
 	}
 
 	return output, nil

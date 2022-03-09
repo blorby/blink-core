@@ -18,7 +18,7 @@ func FetchFile(e *execution.PrivateExecutionEnvironment, request *plugin.Execute
 
 	output, err := common.ExecuteCommand(e, request, nil, "/bin/curl", "-o", destination, fileUrl)
 	if err != nil {
-		return common.GetCommandFailureResponse(output, err)
+		return common.GetCommandFailureResponse(output, err, false)
 	}
 
 	return []byte(destination), nil
