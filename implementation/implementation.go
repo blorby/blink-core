@@ -156,6 +156,7 @@ func NewCorePlugin(rootPluginDirectory string) (*CorePlugin, error) {
 		"az":            executeCoreAzureAction,
 		"fetch_file":    executeCoreFetchFileAction,
 		"nodejs":        executeCoreNodejsAction,
+		"install":       executeInstallAction,
 	}
 
 	return &CorePlugin{

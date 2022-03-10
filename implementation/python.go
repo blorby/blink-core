@@ -3,15 +3,15 @@ package implementation
 import (
 	"encoding/json"
 	"errors"
+	"os"
+
 	"github.com/blinkops/blink-core/common"
 	"github.com/blinkops/blink-core/implementation/execution"
 	"github.com/blinkops/blink-sdk/plugin"
 	log "github.com/sirupsen/logrus"
-	"os"
 )
 
 func executeCorePythonAction(execution *execution.PrivateExecutionEnvironment, ctx *plugin.ActionContext, request *plugin.ExecuteActionRequest) ([]byte, error) {
-
 	code, ok := request.Parameters[codeKey]
 	if !ok {
 		return nil, errors.New("no code provided for execution")
